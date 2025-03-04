@@ -1,0 +1,66 @@
+//  \FILE  : Demo.cpp
+//  \BRIEF : A simple usage example of 'CmdForge'
+
+#include "APIs.h"                 // Your API functions
+#include "./lib/CmdForge.h"       // 'CmdForge' header file
+
+int main() {
+
+	// INITIALIZE YOUR 'CMD FORGE'
+	///////////////////////////////////////////////////////
+	ForgeHwnd CLIF;
+	CLICfgData CLICfg;
+	OptFmtData OptFmt;
+
+	// SET YOUR CLI CONFIGURATION HERE
+	///////////////////////////////////////////////////////
+	CLICfg.InputSleTime=100;
+	CLICfg.DetectSleTime=100;
+	CLICfg.MaxStoredCmd=20;
+	CLICfg.VerMode=VER_M_ALPA;
+	CLICfg.Version="1.0.0.0";
+	CLIF.SetCLICfg(CLICfg);
+
+	// SET YOUR COMMAND HERE
+	///////////////////////////////////////////////////////
+	CLIF.SetCLIMainCmd("test");
+
+	// HOOK YOUR API FUNCTIONS HERE
+	///////////////////////////////////////////////////////
+	CLIF.HookCmdApi("-doit",process_1);
+	CLIF.HookCmdApi("-set",process_2);
+
+	// Add method "--a" to command "-doit":
+	CLIF.SetCmdBrief("-doit","do some thing");
+	OptFmt.Optional=false;
+	OptFmt.OptLong="-bya";
+	OptFmt.OptShort="-a";
+	OptFmt.Brief="do some thing by method a";
+	CLIF.SetCmdOpt("-doit",OptFmt);
+
+	// Add method "--b" to command "-set":
+	CLIF.SetCmdBrief("-set","set some thing");
+	OptFmt.Optional=true;
+	OptFmt.OptLong="-byb";
+	OptFmt.OptShort="-b";
+	OptFmt.Brief="set some thing by method b";
+	CLIF.SetCmdOpt("-set",OptFmt);
+
+	// [Tips] Hook the same function with different commands is allowed:
+	CLIF.HookCmdApi("-do",process_1);
+
+	// [Warn] Hook the same function with different options is not allowed:
+	CLIF.HookCmdApi("-do",process_2);
+
+	// [Tips] Add the different option to the same commands is allowed:
+	CLIF.SetCmdOpt("-do",OptFmt);
+
+	// [Warn] Add the same option to the same commands is not allowed:
+	CLIF.SetCmdOpt("-set",OptFmt);
+
+	// START CLI MAIN LOOP
+	///////////////////////////////////////////////////////
+	CLIF.MainLoop();
+
+	return 0;
+}
