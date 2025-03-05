@@ -20,6 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
+//  VERSION OF LIB    : 1.0.0
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -34,7 +35,7 @@
 #ifdef _WIN32
 #include <conio.h>
 #include <windows.h>
-#elif __linux__
+#elif __APPLE__||__linux__
 #include <unistd.h>
 #include <termios.h>
 #include <sys/select.h>
@@ -77,38 +78,37 @@ class FParser;
 class ForgeHwnd;
 
 typedef struct {                  // Argument control data type.
-	bool Optional;                // Optional or not.
-	string Brief;                 // Brief description.
-	string ArgType;               // Argument type.
+    string Brief;                 // Brief description.
+    string ArgType;               // Argument type.
 }ArgFmtData;
 
 typedef struct {                  // Option control data type.
-	bool Optional;                // Optional or not.
-	string Brief;                 // Brief description.
-	string OptLong;               // Long format option.
-	string OptShort;              // Short format option.
-	vector<ArgFmtData> OptArgs;   // Arguments of option.
+    bool Optional;                // Optional or not.
+    string Brief;                 // Brief description.
+    string LongFmt;               // Long format option.
+    string ShortFmt;              // Short format option.
+    vector<ArgFmtData> Args;      // Arguments of option.
 }OptFmtData;
 
 typedef struct {                  // CLI configuration data type.
     int MaxStoredCmd;             // Maximum stored history commands.
 
-	int InputSleTime;             // Sleep time of command input thread.
-	int DetectSleTime;            // Sleep time of key detect thread.
+    int InputSleTime;             // Sleep time of command input thread.
+    int DetectSleTime;            // Sleep time of key detect thread.
 
-	string VerMode;               // Version mode of CLI.
-	string Version;               // Version info of CLI.
+    string VerMode;               // Version mode of CLI.
+    string Version;               // Version info of CLI.
 }CLICfgData;
 
 typedef struct {                  // Shared data type between threads.
-	int CursorPos;                // Cursor position of command.
-	bool ExitFlag;                // Exit flag of thread.
-	bool EnterFlag;               // Enter flag of command.
-	string CurInput;              // Current input.
-	mutex DataLocker;             // Data locker.
+    int CursorPos;                // Cursor position of command.
+    bool ExitFlag;                // Exit flag of thread.
+    bool EnterFlag;               // Enter flag of command.
+    string CurInput;              // Current input.
+    mutex DataLocker;             // Data locker.
 }ThreadsSharedData;
 
-#ifdef __linux__
+#ifdef __APPLE__||__linux__
 extern bool _kbhit(void);         // Keyborad hit detect.
 extern int _getch(void);          // Get keyborad input.
 #endif
@@ -121,19 +121,21 @@ extern int _getch(void);          // Get keyborad input.
 class SysOut
 {
 protected:
-	///
-	/// NONE FOR THIS CLASS
-	///
+///
+/// NONE FOR THIS CLASS
+///
 private:
-	///
-	/// NONE FOR THIS CLASS
-	///
+///
+/// NONE FOR THIS CLASS
+///
 public:
-	SysOut()=default;
+    SysOut()=default;
 
-	void Cout(string Msg,int Endl=1);
+    void Cout(string Msg,int Endl=1);
 
-	void StdMsg(string Msg,int Level=-1);
+    void StdMsg(string Msg,int Level=-1);
+
+    void Refresh(string RunSign,string CurCmd);
 };
 ////////////////////---------------------------------------
 
@@ -145,26 +147,32 @@ class ApiCan:public SysOut
 protected:
     string s_Brief;               // Brief description of api function.
     vector<string> s_Cmds;        // Command of api function.
-    vector<OptFmtData> s_Opts;   // Options of api command.
-                                  // Arguments rearranged by options.
+    vector<OptFmtData> s_Opts;    // Options of api command.h
+                                  // Arguments arranged by option.
     vector<vector<string>> s_OptArgs;
                                   // Api function callbacked.
     void (*s_API)(vector<vector<string>>);
 
-    bool CheckOpt(vector<string> OptArgs);
+    bool PreCheck(vector<string> *OptsArgs);
+
+    bool PostCheck(vector<vector<string>> OptArgs);
 
     void GenHelpInfo(void);
 private:
 
     void Init(void);
 
-    vector<vector<string>> SplitOpts(vector<string> OptsArg);
+    vector<vector<string>> SplitOpts(vector<string> OptsArgs);
+
+    void SortOptArgs(vector<vector<string>> *OptArgs);
 public:
     ApiCan();
 
+    bool Check(void);
+
     void *API(void);
 
-    void API(vector<string> OptArgs);
+    void API(vector<string> CmdOptsArgs);
 
     void SetApi(void (*API)(vector<vector<string>>));
 
@@ -172,11 +180,15 @@ public:
 
     bool ExistCmd(string Cmd);
 
+    int  CmdIndex(string Cmd);
+
     void AppendCmd(string Cmd);
 
-    bool ExistOpt(string Opt);
+    bool ExistOpt(string OptName);
 
-    void AppendOpt(OptFmtData OptFmt);
+    int  OptIndex(string OptName);
+
+    void AppendOpt(OptFmtData Opt);
 };
 
 ////////////////////---------------------------------------
@@ -193,7 +205,7 @@ protected:
     string s_MainCmd;             // Main command.
     vector<int> s_CmdApiTable;    // Command api table.
     vector<string> s_CmdIndex;    // Command index.
-    vector<string> s_CmdOptArgs;  // Command splited by options, arguments.
+    vector<string> s_CmdOptsArgs; // Command splited by options, arguments.
     vector<ApiCan> s_ApiCanPool;  // Api can pool.
 
     void SetCmdIn(string CmdIn);
@@ -235,9 +247,9 @@ protected:
 
     bool CheckHooks(void);
 private:
-	///
-	/// NONE FOR THIS CLASS
-	///
+///
+/// NONE FOR THIS CLASS
+///
 public:
     FBuilder()=default;
 };
@@ -251,7 +263,7 @@ class FParser:virtual public FData
 {
 protected:
 
-    void CmdParser(string Cmd);
+    void CmdParser(string CmdIn);
 
     void SendOSCmd(string Cmd);
 
@@ -259,9 +271,9 @@ protected:
 
     virtual void ForkReserved(int Index);
 private:
-	///
-	/// NONE FOR THIS CLASS
-	///
+///
+/// NONE FOR THIS CLASS
+///
 public:
     FParser()=default;
 };
@@ -280,20 +292,20 @@ protected:
 #ifdef __linux__
     struct termios s_Original;    // Original setting of linux terminal
 #endif
-	void CmdAutoComplete(string *CurCmd);
+    void CmdAutoComplete(string *CurCmd);
 
-	void InputCmdTask(ThreadsSharedData *Data);
+    void InputCmdTask(ThreadsSharedData *Data);
 
-	void DetecKeyTask(ThreadsSharedData *Data);
+    void DetecKeyTask(ThreadsSharedData *Data);
 private:
 
-    void Refresh(string Cmd);
+    bool Check(void);
 
-    void StoreCmd(string Cmd);
+    void StoreCmd(string CurCmd);
 
-    void GetLastCmd(string *Cmd);
+    void GetLastCmd(string *CurCmd);
 
-    void GetNextCmd(string *Cmd);
+    void GetNextCmd(string *CurCmd);
 #ifdef __linux__
     void TerminalSet();
 

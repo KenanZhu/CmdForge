@@ -1,0 +1,20 @@
+
+[2025-03-05]
+    1. Support parser the options all are (O)type and default option input.
+    2. Add more usage example in demo.
+    3. Enhanced the self-check.
+
+[2025-03-04]
+    1. Support history command select.
+    2. Support Linux.
+    3. First upload of source.
+
+[2025-03-02]
+    1. Created LICENSE.
+    2. Complished the basic logic, functions.
+
+[2025-02-26]
+    1. First created.
+
+
+$- Created by FLRecorder (powered by CmdForge) ver0.0.8-dev in P-log format.
