@@ -35,7 +35,7 @@
 #ifdef _WIN32
 #include <conio.h>
 #include <windows.h>
-#elif __APPLE__||__linux__
+#elif __linux__
 #include <unistd.h>
 #include <termios.h>
 #include <sys/select.h>
@@ -108,7 +108,7 @@ typedef struct {                  // Shared data type between threads.
     mutex DataLocker;             // Data locker.
 }ThreadsSharedData;
 
-#ifdef __APPLE__||__linux__
+#ifdef __linux__
 extern bool _kbhit(void);         // Keyborad hit detect.
 extern int _getch(void);          // Get keyborad input.
 #endif

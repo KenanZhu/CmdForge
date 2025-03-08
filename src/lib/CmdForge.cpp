@@ -25,7 +25,7 @@
 
 #include "CmdForge.h"
 
-#ifdef __APPLE__||__linux__
+#ifdef __linux__
 bool _kbhit(void)
 {
     struct timeval tv={0, 0};
@@ -733,7 +733,7 @@ void ForgeHwnd::InputCmdTask(ThreadsSharedData *Data)
         }
 #ifdef _WIN32
         Sleep(s_Cfg.InputSleTime);
-#elif __APPLE__||__linux__
+#elif __linux__
         usleep(s_Cfg.DetectSleTime*1000);
 #endif
     }
@@ -771,7 +771,7 @@ void ForgeHwnd::DetecKeyTask(ThreadsSharedData *Data)
                 this->Refresh(s_RunSign,Data->CurInput);
                 continue;
             }
-#elif __APPLE__||__linux__
+#elif __linux__
             if (KeyVal==0x7f) KeyVal=0x08;
 
             if (KeyVal==0x1b) {
@@ -835,7 +835,7 @@ void ForgeHwnd::DetecKeyTask(ThreadsSharedData *Data)
         }
 #ifdef _WIN32
         Sleep(s_Cfg.InputSleTime);
-#elif __APPLE__||__linux__
+#elif __linux__
         usleep(s_Cfg.InputSleTime*1000);
 #endif
     }
@@ -886,7 +886,7 @@ void ForgeHwnd::GetNextCmd(string *CurCmd)
 
     return;
 }
-#ifdef __APPLE__||__linux__
+#ifdef __linux__
 void ForgeHwnd::TerminalSet(void)
 {
     tcgetattr(STDIN_FILENO,&s_Original);
@@ -1012,7 +1012,7 @@ int ForgeHwnd::MainLoop(string RunSign)
     Data.CurInput.clear();
 
     if (!this->Check()) return 0;
-#ifdef __APPLE__||__linux__
+#ifdef __linux__
     this->TerminalSet();
 #endif
     thread Tin(&ForgeHwnd::InputCmdTask,this,&Data);
@@ -1020,7 +1020,7 @@ int ForgeHwnd::MainLoop(string RunSign)
 
     Tco.join();
     Tin.join();
-#ifdef __APPLE__||__linux__
+#ifdef __linux__
     this->TerminalReset();
 #endif
     return 0;
