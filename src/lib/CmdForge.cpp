@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.0
+//  VERSION OF LIB    : 1.0.1
 // ----------------------------------------------------------------------------
 
 #include "CmdForge.h"
@@ -116,6 +116,7 @@ ApiCan::ApiCan()
 bool ApiCan::PreCheck(vector<string> *OptsArgs)
 {
     bool Flag=true;
+    int i,Opts=(int)s_Opts.size();
 
     if ((*OptsArgs).size()==0) {            // REJECT: no [-opt] part.
         this->StdMsg("no [-opt] part",0);
@@ -126,7 +127,9 @@ bool ApiCan::PreCheck(vector<string> *OptsArgs)
         this->GenHelpInfo();
         Flag=false;
     }                                       // CORRECT: set default option.
-    else if (!this->ExistOpt((*OptsArgs)[0])) { 
+    else if (!this->ExistOpt((*OptsArgs)[0])) {
+        for (i=0;i<Opts;i++) if (!s_Opts[i].Optional) return Flag=true;
+
         (*OptsArgs).insert((*OptsArgs).begin(),s_Opts[0].LongFmt);
         Flag=true;
     }
@@ -139,14 +142,14 @@ bool ApiCan::PostCheck(vector<vector<string>> OptArgs)
     int i,j,MOpts=0,Cotr=0,Index,
     Size=(int)OptArgs.size(),Opts=(int)s_Opts.size();
 
-    for (i=0;i<Opts;i++) if (s_Opts[i].Optional) MOpts++;
+    for (i=0;i<Opts;i++) if (!s_Opts[i].Optional) MOpts++;
 
     // Check the mandatory options.
     if (Size==0) {this->StdMsg("no valid option.",0); return Flag=false;}
 
     // Find the if lost mandatory options.
     for (i=0;i<Opts;i++) {
-        if (!s_Opts[i].Optional) continue;
+        if (s_Opts[i].Optional) continue;
 
         for (j=0;j<Size;j++) {
             if (s_Opts[i].LongFmt==OptArgs[j][0]||s_Opts[i].ShortFmt==OptArgs[j][0]) {
@@ -198,8 +201,8 @@ void ApiCan::GenHelpInfo(void)
 
     for (i=0;i<Opts;i++) {
         TempMsg.clear();
-        if (s_Opts[i].Optional) TempMsg+="  M:";
-        else                    TempMsg+="  O:";
+        if (s_Opts[i].Optional) TempMsg+="  O:";
+        else                    TempMsg+="  M:";
 
         TempMsg+=" [-opt]: "+s_Opts[i].LongFmt+"/"+s_Opts[i].ShortFmt;
         TempMsg+=" brief: "+s_Opts[i].Brief;
@@ -707,136 +710,130 @@ void ForgeHwnd::CmdAutoComplete(string *CurCmd)
     return;
 }
 
-void ForgeHwnd::InputCmdTask(ThreadsSharedData *Data)
+void ForgeHwnd::InputCmdTask(CmdSurfaceData *Data)
 {
     size_t p;
 
-    this->Cout(s_RunSign,0);
-
-    while (!Data->ExitFlag) {
-        if (!Data->EnterFlag) continue;
-
-        lock_guard<mutex> Lock(Data->DataLocker);
-        p=Data->CurInput.find('\n');
-        if (p!=string::npos) {
-            s_CmdIn.clear();
-            this->SetCmdIn(Data->CurInput.substr(0,p));
-            Data->CurInput.erase(0,p+1);
-            Data->EnterFlag=false;
-            Data->CursorPos=0;
-        }
-        if (!s_CmdIn.empty()) {
-            this->StoreCmd(s_CmdIn);
-            this->CmdParser(s_CmdIn);
-            this->Cout(s_RunSign,0);
-            s_CurCmdPos=(int)s_HistoryCmd.size();
-        }
-#ifdef _WIN32
-        Sleep(s_Cfg.InputSleTime);
-#elif __linux__
-        usleep(s_Cfg.DetectSleTime*1000);
-#endif
+    p=Data->CurInput.find('\n');
+    if (p!=string::npos) {
+        s_CmdIn.clear();
+        this->SetCmdIn(Data->CurInput.substr(0,p));
+        Data->CurInput.erase(0,p+1);
+        Data->CursorPos=0;
     }
+    if (!s_CmdIn.empty()) {
+        this->StoreCmd(s_CmdIn);
+        this->CmdParser(s_CmdIn);
+        this->Cout(s_RunSign,0);
+        s_CurCmdPos=(int)s_HistoryCmd.size();
+    }
+#ifdef _WIN32
+    Sleep(s_Cfg.InputSleTime);
+#elif __linux__
+    usleep(s_Cfg.InputSleTime*1000);
+#endif
     return;
 }
 
-void ForgeHwnd::DetecKeyTask(ThreadsSharedData *Data)
+void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
 {
     int KeyVal=0;
 
     while (!Data->ExitFlag) {
-        if (_kbhit()) {
-            KeyVal=_getch();
+        if (!_kbhit()) {
 #ifdef _WIN32
-            if (KeyVal==0x00||KeyVal==0xe0) {
+            Sleep(s_Cfg.DetectSleTime);
+#elif __linux__
+            usleep(s_Cfg.DetectSleTime * 1000);
+#endif
+            continue;
+        }
+
+        KeyVal=_getch();
+#ifdef _WIN32
+        if (KeyVal==0x00||KeyVal==0xe0) {
+            KeyVal=_getch();
+
+            switch (KeyVal) {
+            case 0x48: // Up
+                this->Refresh(s_RunSign,"");
+                this->GetLastCmd(&Data->CurInput);
+                break;
+            case 0x50: // Down
+                this->Refresh(s_RunSign,"");
+                this->GetNextCmd(&Data->CurInput);
+                break;
+            case 0x4b: // Left
+                break;
+            case 0x4d: // Right
+                break;
+            }
+            Data->CursorPos=(int)Data->CurInput.size();
+            this->Refresh(s_RunSign,Data->CurInput);
+            continue;
+        }
+#elif __linux__
+        if (KeyVal==0x7f) KeyVal=0x08;
+        if (KeyVal==0x1b) {
+                
+            if (!_kbhit()) Data->ExitFlag=true;
+
+            KeyVal=_getch();
+ 
+            if (KeyVal==0x5b&&_kbhit()) {
                 KeyVal=_getch();
 
-                lock_guard<mutex> Lock(Data->DataLocker);
-
                 switch (KeyVal) {
-                case 0x48: // Up
+                case 0x41: // Up
                     this->Refresh(s_RunSign,"");
                     this->GetLastCmd(&Data->CurInput);
                     break;
-                case 0x50: // Down
+                case 0x42: // Down
                     this->Refresh(s_RunSign,"");
                     this->GetNextCmd(&Data->CurInput);
                     break;
-                case 0x4b: // Left
+                case 0x43: // Left
                     break;
-                case 0x4d: // Right
+                case 0x44: // Right
                     break;
                 }
                 Data->CursorPos=(int)Data->CurInput.size();
                 this->Refresh(s_RunSign,Data->CurInput);
-                continue;
             }
-#elif __linux__
-            if (KeyVal==0x7f) KeyVal=0x08;
-
-            if (KeyVal==0x1b) {
-                lock_guard<mutex> Lock(Data->DataLocker);
-                
-                if (!_kbhit()) Data->ExitFlag=true;
-
-                KeyVal=_getch();
-                
-                if (KeyVal==0x5b&&_kbhit()) {
-                    KeyVal=_getch();
-
-                    switch (KeyVal) {
-                    case 0x41: // Up
-                        this->Refresh(s_RunSign,"");
-                        this->GetLastCmd(&Data->CurInput);
-                        break;
-                    case 0x42: // Down
-                        this->Refresh(s_RunSign,"");
-                        this->GetNextCmd(&Data->CurInput);
-                        break;
-                    case 0x43: // Left
-                        break;
-                    case 0x44: // Right
-                        break;
-                    }
-                    Data->CursorPos=(int)Data->CurInput.size();
-                    this->Refresh(s_RunSign,Data->CurInput);
-                }
-                while (_kbhit()) _getch();
-                continue;
-            }
+            while (_kbhit()) _getch();
+            continue;
+        }
 #endif
-            lock_guard<mutex> Lock(Data->DataLocker);
-            switch (KeyVal) {
-            case 0x08: // Backspace
-                if (Data->CursorPos>0) {
-                    Data->CurInput.erase(Data->CursorPos-1,1);
-                    Data->CursorPos--;
-                    this->Refresh(s_RunSign,Data->CurInput);
-                }
-                break;
-            case 0x09: // Tab
-                this->CmdAutoComplete(&Data->CurInput);
-                Data->CursorPos=(int)Data->CurInput.size();
-                break;
-            case 0x0d: // Enter
-                Data->CurInput+='\n';
-                Data->EnterFlag=true;
-                break;
-            case 0x1b: // Esc
-                Data->ExitFlag=true;
-                break;
-            default:   // Character
-                if (KeyVal<32||KeyVal>126) return;
-                Data->CurInput.insert(Data->CursorPos,1,KeyVal);
-                Data->CursorPos++;
+        switch (KeyVal) {
+        case 0x08: // Backspace
+            if (Data->CursorPos>0) {
+                Data->CurInput.erase(Data->CursorPos-1,1);
+                Data->CursorPos--;
                 this->Refresh(s_RunSign,Data->CurInput);
-                break;
             }
+            break;
+        case 0x09: // Tab
+            this->CmdAutoComplete(&Data->CurInput);
+            Data->CursorPos=(int)Data->CurInput.size();
+            break;
+        case 0x0d: // Enter
+            Data->CurInput+='\n';
+            this->InputCmdTask(Data);
+            break;
+        case 0x1b: // Esc
+            Data->ExitFlag=true;
+            break;
+        default:   // Character
+            if (KeyVal<32||KeyVal>126) return;
+            Data->CurInput.insert(Data->CursorPos,1,KeyVal);
+            Data->CursorPos++;
+            this->Refresh(s_RunSign,Data->CurInput);
+            break;
         }
 #ifdef _WIN32
-        Sleep(s_Cfg.InputSleTime);
+    Sleep(s_Cfg.DetectSleTime);
 #elif __linux__
-        usleep(s_Cfg.InputSleTime*1000);
+    usleep(s_Cfg.DetectSleTime*1000);
 #endif
     }
     return;
@@ -860,7 +857,7 @@ bool ForgeHwnd::Check(void)
 void ForgeHwnd::StoreCmd(string CurCmd)
 {
     if (s_HistoryCmd.size()>=s_Cfg.MaxStoredCmd) {
-        s_HistoryCmd.erase(s_HistoryCmd.begin());	
+        s_HistoryCmd.erase(s_HistoryCmd.begin());
     }
     s_HistoryCmd.push_back(CurCmd);
 
@@ -952,8 +949,8 @@ void ForgeHwnd::ForkReserved(int Index)
             exit(0); break;
         default:
             break;
-        }
-        return;
+    }
+    return;
 }
 ///    PUBLIC :
 /////////////////////////////////////////////////
@@ -1002,24 +999,21 @@ void ForgeHwnd::SetCmdOpt(string Cmd,OptFmtData OptFmt)
 
 int ForgeHwnd::MainLoop(string RunSign)
 {
-    ThreadsSharedData Data;
+    CmdSurfaceData Data;
 
     s_RunSign=RunSign;
 
     Data.CursorPos=0;
     Data.ExitFlag=false;
-    Data.EnterFlag=false;
     Data.CurInput.clear();
 
     if (!this->Check()) return 0;
 #ifdef __linux__
     this->TerminalSet();
 #endif
-    thread Tin(&ForgeHwnd::InputCmdTask,this,&Data);
-    thread Tco(&ForgeHwnd::DetecKeyTask,this,&Data);
+    this->Refresh(s_RunSign,"");
 
-    Tco.join();
-    Tin.join();
+    this->DetecKeyTask(&Data);
 #ifdef __linux__
     this->TerminalReset();
 #endif

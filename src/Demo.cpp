@@ -15,8 +15,8 @@ int main() {
     
     // SET YOUR CLI CONFIGURATION HERE
     ///////////////////////////////////////////////////////
-    CLICfg.InputSleTime=100;
-    CLICfg.DetectSleTime=100;
+    CLICfg.InputSleTime=10;
+    CLICfg.DetectSleTime=10;      // Suggest set in '10-100'.
     CLICfg.MaxStoredCmd=20;
     CLICfg.VerMode=VER_M_ALPA;
     CLICfg.Version="1.0.0.0";
@@ -42,13 +42,13 @@ int main() {
     CLIF.SetCmdOpt("-doit",OptFmt);
     
     // [Tips] Add the different option to the same commands is allowed:
-    OptFmt.Optional=false;
+    OptFmt.Optional=true;
     OptFmt.LongFmt="-byb";
     OptFmt.ShortFmt="-b";
     OptFmt.Brief="do some thing by method b";
     CLIF.SetCmdOpt("-doit",OptFmt);
     
-    OptFmt.Optional=false;
+    OptFmt.Optional=true;
     OptFmt.LongFmt="-byc";
     OptFmt.ShortFmt="-c";
     OptFmt.Brief="do some thing by method c";
@@ -56,7 +56,7 @@ int main() {
 
     // Add method "-a" to command "-set":
     CLIF.SetCmdBrief("-set","set some thing");
-    OptFmt.Optional=true;
+    OptFmt.Optional=false;
     OptFmt.LongFmt="-bya";
     OptFmt.ShortFmt="-a";
     OptFmt.Brief="set some thing by method a";

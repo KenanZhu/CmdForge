@@ -20,15 +20,13 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.0
+//  VERSION OF LIB    : 1.0.1
 // ----------------------------------------------------------------------------
 
 #pragma once
 
 //////////////////// _INCLUDE_
-#include <mutex>
 #include <vector>
-#include <thread>
 #include <sstream>
 #include <iostream>
 
@@ -103,10 +101,8 @@ typedef struct {                  // CLI configuration data type.
 typedef struct {                  // Shared data type between threads.
     int CursorPos;                // Cursor position of command.
     bool ExitFlag;                // Exit flag of thread.
-    bool EnterFlag;               // Enter flag of command.
     string CurInput;              // Current input.
-    mutex DataLocker;             // Data locker.
-}ThreadsSharedData;
+}CmdSurfaceData;
 
 #ifdef __linux__
 extern bool _kbhit(void);         // Keyborad hit detect.
@@ -294,9 +290,9 @@ protected:
 #endif
     void CmdAutoComplete(string *CurCmd);
 
-    void InputCmdTask(ThreadsSharedData *Data);
+    void InputCmdTask(CmdSurfaceData *Data);
 
-    void DetecKeyTask(ThreadsSharedData *Data);
+    void DetecKeyTask(CmdSurfaceData *Data);
 private:
 
     bool Check(void);

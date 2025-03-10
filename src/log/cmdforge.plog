@@ -1,3 +1,7 @@
+[2025-03-10]
+    1. Optimze resource occupy of lib on Windows and Linux.
+    2. Fxied the ambiguity of options's nameing of optional.
+    3. Fixed the default option determination mechanism
 
 [2025-03-05]
     1. Support parser the options all are (O)type and default option input.
