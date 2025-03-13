@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.1
+//  VERSION OF LIB    : 1.0.3
 // ----------------------------------------------------------------------------
 
 #include "CmdForge.h"
@@ -96,10 +96,31 @@ void SysOut::StdMsg(string Msg,int Level)
     return;
 }
 
-void SysOut::Refresh(string RunSign, string CurCmd)
+void SysOut::CurMove(int SetPos)
 {
+    int NewPos;
+
+    NewPos=max(0,min(SetPos,(int)s_CurInputLength));
+
+    printf("\033[s");
+    printf("\033[%dG",NewPos+1);
+    fflush(stdout); 
+
+    return;
+}
+
+void SysOut::Refresh(string RunSign,string CurCmd)
+{
+    this->UpdateInputLength((int)(RunSign.size()+CurCmd.size()));
     cout<<"\33[2K\r"<<RunSign<<CurCmd;
     cout.flush();
+
+    return;
+}
+
+void SysOut::UpdateInputLength(int CurInputLength)
+{
+    s_CurInputLength=CurInputLength;
 
     return;
 }
@@ -118,15 +139,17 @@ bool ApiCan::PreCheck(vector<string> *OptsArgs)
     bool Flag=true;
     int i,Opts=(int)s_Opts.size();
 
-    if ((*OptsArgs).size()==0) {            // REJECT: no [-opt] part.
+    if ((*OptsArgs).size()==0) {            // CHECK: no [-opt] part.
+        if (!Opts) return Flag=true;
+
         this->StdMsg("no [-opt] part",0);
         this->StdMsg("need help? use opt '-help/-h'",0);
         Flag=false;
-    }                                       // CHECKED: [-help/-h] opt.
+    }                                       // CHECK: [-help/-h] opt.
     else if ((*OptsArgs)[0]=="-help"||(*OptsArgs)[0]=="-h") {
         this->GenHelpInfo();
         Flag=false;
-    }                                       // CORRECT: set default option.
+    }                                       // CHECK: use default option.
     else if (!this->ExistOpt((*OptsArgs)[0])) {
         for (i=0;i<Opts;i++) if (!s_Opts[i].Optional) return Flag=true;
 
@@ -145,7 +168,7 @@ bool ApiCan::PostCheck(vector<vector<string>> OptArgs)
     for (i=0;i<Opts;i++) if (!s_Opts[i].Optional) MOpts++;
 
     // Check the mandatory options.
-    if (Size==0) {this->StdMsg("no valid option.",0); return Flag=false;}
+    if (Opts&&Size==0) {this->StdMsg("no valid option.",0); return Flag=false;}
 
     // Find the if lost mandatory options.
     for (i=0;i<Opts;i++) {
@@ -160,7 +183,7 @@ bool ApiCan::PostCheck(vector<vector<string>> OptArgs)
             }
         }
     }
-    if (Cotr!=MOpts) {
+    if (Cotr<MOpts) {
         this->StdMsg("lost "+to_string(MOpts-Cotr)+" mandatory opt(s).",0);
         return Flag=false;
     }
@@ -190,14 +213,13 @@ void ApiCan::GenHelpInfo(void)
     string TempMsg;
     int i,Cmds=(int)s_Cmds.size(),Opts=(int)s_Opts.size();
 
-    this->Cout("");
     TempMsg.clear();
     TempMsg="[-cmd]      =";
     for (i=0;i<Cmds;i++) TempMsg+=S+s_Cmds[i];
     this->Cout(TempMsg);
     this->Cout("  $- brief  :"+s_Brief);
-    this->Cout("  $- usage  :"+s_Cmds[0]+" [-opt] [-arg]");
-    this->Cout("");
+    this->Cout("  $- usage  :"+s_Cmds[0]+" [-opt]/... [-arg]/...");
+    if (Opts) this->Cout("");
 
     for (i=0;i<Opts;i++) {
         TempMsg.clear();
@@ -208,7 +230,6 @@ void ApiCan::GenHelpInfo(void)
         TempMsg+=" brief: "+s_Opts[i].Brief;
         this->Cout(TempMsg);
     }
-    this->Cout("");
 
     return;
 }
@@ -234,7 +255,7 @@ bool ApiCan::Check(void)
     }
     else if (s_Opts.size()==0) {
         this->StdMsg("no [-opt] include in command '"+s_Cmds[0]+"'.",2);
-        return State=false;
+        return State=true;
     }
     for (i=0;i<Opts;i++) {
         if (s_Opts[i].LongFmt.empty()) {
@@ -279,25 +300,6 @@ vector<vector<string>> ApiCan::SplitOpts(vector<string> OptsArgs)
 
 void ApiCan::SortOptArgs(vector<vector<string>> *OptArgs)
 {
-    vector<string> TempOptArg;
-    int i,Index,Opts=(int)s_Opts.size(),Size=(int)OptArgs->size();
-
-    // Compensate the missing options.
-    for (i=0;i<Opts-Size;i++) {
-        TempOptArg.clear();
-        (*OptArgs).push_back(TempOptArg);
-    }
-
-    // Sort by options list.
-    for (i=0;i<Opts;i++) {
-        if ((*OptArgs)[i].size()==0) continue;
-        Index=this->OptIndex((*OptArgs)[i][0]);
-
-        if (i==Index) continue;
-        TempOptArg=(*OptArgs)[i];
-        (*OptArgs)[i]=(*OptArgs)[Index];
-        (*OptArgs)[Index]=TempOptArg;
-    }
     return;
 }
 ///    PUBLIC :
@@ -675,12 +677,28 @@ void FParser::ForkReserved(int Index)
 /////////////////////////////////////////////////////////////////////
 ForgeHwnd::ForgeHwnd()
 {
+    s_CurCmdPos=0;
+    s_HistoryCmd.clear();
+
+    // Init of config
+    s_Cfg.VerMode=VER_M_DEFT;
+    s_Cfg.Version.clear();
+    s_Cfg.ProgramName.clear();
+    s_Cfg.MaxStoredCmd=10;
+    s_Cfg.InputSleTime=30;
+    s_Cfg.DetectSleTime=30;
+
     // This is the reserved command:
     // Lacking hook of api callback,you can add but do not remove them.
     this->HookApi("-help",nullptr);
     this->HookApi("-sys" ,nullptr);
     this->HookApi("-ver" ,nullptr);
     this->HookApi("-quit",nullptr);
+
+    this->SetCmdBrief("-help","get help infomation");
+    this->SetCmdBrief("-sys" ,"system interface"   );
+    this->SetCmdBrief("-ver" ,"get version message");
+    this->SetCmdBrief("-quit","quit the program"   );
 
     s_ResCmdNum=(int)s_CmdIndex.size();
 }
@@ -744,7 +762,7 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
 #ifdef _WIN32
             Sleep(s_Cfg.DetectSleTime);
 #elif __linux__
-            usleep(s_Cfg.DetectSleTime * 1000);
+            usleep(s_Cfg.DetectSleTime*1000);
 #endif
             continue;
         }
@@ -758,28 +776,33 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
             case 0x48: // Up
                 this->Refresh(s_RunSign,"");
                 this->GetLastCmd(&Data->CurInput);
+                Data->CursorPos=(int)Data->CurInput.size();
                 break;
             case 0x50: // Down
                 this->Refresh(s_RunSign,"");
                 this->GetNextCmd(&Data->CurInput);
+                Data->CursorPos=(int)Data->CurInput.size();
                 break;
             case 0x4b: // Left
+                if (Data->CursorPos>0) {
+                    Data->CursorPos--;
+                }
                 break;
             case 0x4d: // Right
+                if (Data->CursorPos<(int)Data->CurInput.size()) {
+                    Data->CursorPos++;
+                }
                 break;
             }
-            Data->CursorPos=(int)Data->CurInput.size();
-            this->Refresh(s_RunSign,Data->CurInput);
-            continue;
         }
 #elif __linux__
         if (KeyVal==0x7f) KeyVal=0x08;
         if (KeyVal==0x1b) {
-                
+
             if (!_kbhit()) Data->ExitFlag=true;
 
             KeyVal=_getch();
- 
+
             if (KeyVal==0x5b&&_kbhit()) {
                 KeyVal=_getch();
 
@@ -787,53 +810,64 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
                 case 0x41: // Up
                     this->Refresh(s_RunSign,"");
                     this->GetLastCmd(&Data->CurInput);
+                    Data->CursorPos=(int)Data->CurInput.size();
                     break;
                 case 0x42: // Down
                     this->Refresh(s_RunSign,"");
                     this->GetNextCmd(&Data->CurInput);
+                    Data->CursorPos=(int)Data->CurInput.size();
                     break;
                 case 0x43: // Left
+                    if (Data->CursorPos>0) {
+                        Data->CursorPos--;
+                    }
                     break;
                 case 0x44: // Right
+                    if (Data->CursorPos<(int)Data->CurInput.size()) {
+                        Data->CursorPos++;
+                    }
                     break;
                 }
-                Data->CursorPos=(int)Data->CurInput.size();
-                this->Refresh(s_RunSign,Data->CurInput);
             }
-            while (_kbhit()) _getch();
-            continue;
         }
 #endif
-        switch (KeyVal) {
-        case 0x08: // Backspace
-            if (Data->CursorPos>0) {
-                Data->CurInput.erase(Data->CursorPos-1,1);
-                Data->CursorPos--;
-                this->Refresh(s_RunSign,Data->CurInput);
+        else {
+            switch (KeyVal) {
+            case 0x08: // Backspace
+                if (Data->CursorPos>0) {
+                    Data->CurInput.erase(Data->CursorPos-1,1);
+                    Data->CursorPos--;
+                }
+                break;
+            case 0x09: // Tab
+                this->CmdAutoComplete(&Data->CurInput);
+                Data->CursorPos=(int)Data->CurInput.size();
+                break;
+            case 0x0d: // Enter
+                Data->CurInput+='\n';
+                this->InputCmdTask(Data);
+                break;
+            case 0x1b: // Esc
+                Data->ExitFlag=true;
+                break;
+            default:   // Character
+                if (KeyVal<32||KeyVal>126) return;
+                Data->CurInput.insert(Data->CursorPos,1,KeyVal);
+                Data->CursorPos++;
+                break;
             }
-            break;
-        case 0x09: // Tab
-            this->CmdAutoComplete(&Data->CurInput);
-            Data->CursorPos=(int)Data->CurInput.size();
-            break;
-        case 0x0d: // Enter
-            Data->CurInput+='\n';
-            this->InputCmdTask(Data);
-            break;
-        case 0x1b: // Esc
-            Data->ExitFlag=true;
-            break;
-        default:   // Character
-            if (KeyVal<32||KeyVal>126) return;
-            Data->CurInput.insert(Data->CursorPos,1,KeyVal);
-            Data->CursorPos++;
-            this->Refresh(s_RunSign,Data->CurInput);
-            break;
         }
+        // Clear buff input
+        while (_kbhit()) _getch();
+
+        // Update console
+        this->Refresh(s_RunSign, Data->CurInput);
+        this->CurMove((int)(s_RunSign.size()) + Data->CursorPos);
+
 #ifdef _WIN32
-    Sleep(s_Cfg.DetectSleTime);
+        Sleep(s_Cfg.DetectSleTime);
 #elif __linux__
-    usleep(s_Cfg.DetectSleTime*1000);
+        usleep(s_Cfg.DetectSleTime*1000);
 #endif
     }
     return;
@@ -883,34 +917,55 @@ void ForgeHwnd::GetNextCmd(string *CurCmd)
 
     return;
 }
-#ifdef __linux__
+
 void ForgeHwnd::TerminalSet(void)
 {
-    tcgetattr(STDIN_FILENO,&s_Original);
-    struct termios new_settings=s_Original;
-    new_settings.c_lflag&=~(ICANON|ECHO);
-    new_settings.c_iflag&=~(ICRNL);
-    tcsetattr(STDIN_FILENO,TCSANOW,&new_settings);
+#ifdef _WIN32
+    DWORD NewMode;
+    HANDLE hStdin;
 
+    hStdin=GetStdHandle(STD_INPUT_HANDLE);
+    if (hStdin==INVALID_HANDLE_VALUE) return;
+    GetConsoleMode(hStdin,&s_Original);
+    NewMode=s_Original;
+    NewMode&=~(ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT);
+    SetConsoleMode(hStdin,NewMode);
+#elif __linux__
+    struct termios NewMode;
+
+    tcgetattr(STDIN_FILENO,&s_Original);
+    NewMode=s_Original;
+    NewMode.c_lflag&=~(ICANON|ECHO);
+    NewMode.c_iflag&=~(ICRNL);
+    tcsetattr(STDIN_FILENO,TCSANOW,&new_settings);
+#endif
     return;
 }
 
 void ForgeHwnd::TerminalReset(void)
 {
-    tcsetattr(STDIN_FILENO,TCSANOW,&s_Original);
+#ifdef _WIN32
+    HANDLE hStdin;
 
+    hStdin=GetStdHandle(STD_INPUT_HANDLE);
+    if (hStdin!=INVALID_HANDLE_VALUE) {
+        SetConsoleMode(hStdin,s_Original);
+    }
+#elif __linux__
+    tcsetattr(STDIN_FILENO,TCSANOW,&s_Original);
+#endif
     return;
 }
-#endif
+
 void ForgeHwnd::GenHelpInfo(void)
 {
     int i,Apis=(int)s_ApiCanPool.size();
     string UsageMsg="";
 
-    this->Cout("");
-    this->Cout("$- usage: "+s_MainCmd+" [-cmd] [-opt] ...");
+    this->Cout("$- usage: "+s_MainCmd+" [-cmd] [-opt]/... [-arg]/...");
 
     for (i=0;i<Apis;i++) {
+        this->Cout("");
         s_ApiCanPool[i].API({"","","-help"});
     }
     return;
@@ -918,12 +973,11 @@ void ForgeHwnd::GenHelpInfo(void)
 
 void ForgeHwnd::GenVersionInfo(void)
 {
-    this->Cout(" ___________________________________________");
-    this->Cout("|- version: "+s_Cfg.Version+" "+s_Cfg.VerMode);
-    this->Cout("|___________________________________________");
-    this->Cout("| Powered by <CmdForge>                     ");
-    this->Cout("| License: GNU AGPLv3                       ");
-    this->Cout("| Copyright (C) 2025 KenanZhu (NANOKI)      ");
+    this->Cout("___________________________________________");
+    this->Cout("  "+s_Cfg.ProgramName                       );
+    this->Cout("  version: "+s_Cfg.Version+" "+s_Cfg.VerMode);
+    this->Cout("___________________________________________");
+    this->Cout("  Powered by <CmdForge>                    ");
     this->Cout("");
     
     return;
@@ -932,7 +986,8 @@ void ForgeHwnd::GenVersionInfo(void)
 void ForgeHwnd::ForkReserved(int Index)
 {
     // Reserved command:
-    // -help : generate help message of all api cans.
+    // -help : generate help message of all api.
+    // -sys  : reserved system interface.
     // -ver  : generate version information of this program.
     // -quit : quit this program.
     //
@@ -957,6 +1012,41 @@ void ForgeHwnd::ForkReserved(int Index)
 void ForgeHwnd::SetCLICfg(CLICfgData Cfg)
 {
     s_Cfg=Cfg;
+
+    return;
+}
+
+void ForgeHwnd::SetCLIMode(int Mode)
+{
+    switch (Mode)
+    {
+    case DEFAULT_M:
+        s_Cfg.MaxStoredCmd=30;
+        s_Cfg.InputSleTime=30;
+        s_Cfg.DetectSleTime=30;
+        break;
+    case HIGHPFM_M:
+        s_Cfg.MaxStoredCmd=10;
+        s_Cfg.InputSleTime=10;
+        s_Cfg.DetectSleTime=50;
+        break;
+    case BALANCE_M:
+        s_Cfg.MaxStoredCmd=50;
+        s_Cfg.InputSleTime=50;
+        s_Cfg.DetectSleTime=20;
+        break;
+    case LOWCOST_M:
+        s_Cfg.MaxStoredCmd=100;
+        s_Cfg.InputSleTime=100;
+        s_Cfg.DetectSleTime=10;
+        break;
+    }
+    return;
+}
+
+void ForgeHwnd::SetCLIVersion(string Version)
+{
+    s_Cfg.Version=Version;
 
     return;
 }
@@ -1008,14 +1098,14 @@ int ForgeHwnd::MainLoop(string RunSign)
     Data.CurInput.clear();
 
     if (!this->Check()) return 0;
-#ifdef __linux__
+
     this->TerminalSet();
-#endif
+
     this->Refresh(s_RunSign,"");
 
     this->DetecKeyTask(&Data);
-#ifdef __linux__
+
     this->TerminalReset();
-#endif
+
     return 0;
 }

@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.1
+//  VERSION OF LIB    : 1.0.3
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -40,10 +40,10 @@
 #endif
 
 //////////////////// _DEFINE_
-#define _DEFAULT_M      0         // Run Mode: default mode.
-#define HIGH_PFM_M      1         // Run Mode: high performance mode.
-#define BALANCED_M      2         // Run Mode: balanced mode.
-#define LOW_COST_M      3         // Run Mode: low cost mode.
+#define DEFAULT_M      0          // Run Mode: default mode.
+#define HIGHPFM_M      1          // Run Mode: high performance mode.
+#define BALANCE_M      2          // Run Mode: balanced mode.
+#define LOWCOST_M      3          // Run Mode: low cost mode.
 
                                   // Space.
 #define S               std::string(" ")
@@ -57,8 +57,8 @@
                                   // Version Mode: beta.
 #define VER_M_BETA      std::string("beta")
                                   // Version Mode: stable.
-#define VER_M_REL       std::string("stable")
-#define VER_M_SPARE     S         // Version Mode: reserved.
+#define VER_M_RELE      std::string("stable")
+#define VER_M_SPAR      S         // Version Mode: reserved.
                                   // Default run sign.
 #define DEFT_RSIGN      std::string("> CmdForge :")
 
@@ -76,8 +76,8 @@ class FParser;
 class ForgeHwnd;
 
 typedef struct {                  // Argument control data type.
+    int ArgType;                  // Argument type.
     string Brief;                 // Brief description.
-    string ArgType;               // Argument type.
 }ArgFmtData;
 
 typedef struct {                  // Option control data type.
@@ -94,6 +94,7 @@ typedef struct {                  // CLI configuration data type.
     int InputSleTime;             // Sleep time of command input thread.
     int DetectSleTime;            // Sleep time of key detect thread.
 
+    string ProgramName;           // Name of program.
     string VerMode;               // Version mode of CLI.
     string Version;               // Version info of CLI.
 }CLICfgData;
@@ -117,9 +118,7 @@ extern int _getch(void);          // Get keyborad input.
 class SysOut
 {
 protected:
-///
-/// NONE FOR THIS CLASS
-///
+    int s_CurInputLength=0;       // Current input length in terminal.
 private:
 ///
 /// NONE FOR THIS CLASS
@@ -131,7 +130,11 @@ public:
 
     void StdMsg(string Msg,int Level=-1);
 
+    void CurMove(int Offset);
+
     void Refresh(string RunSign,string CurCmd);
+
+    void UpdateInputLength(int CurInputLength);
 };
 ////////////////////---------------------------------------
 
@@ -155,7 +158,6 @@ protected:
 
     void GenHelpInfo(void);
 private:
-
     void Init(void);
 
     vector<vector<string>> SplitOpts(vector<string> OptsArgs);
@@ -224,7 +226,6 @@ protected:
 
     void AppendApiCan(ApiCan ApiCan);
 private:
-
     void Init(void);
 public:
     FData();
@@ -238,7 +239,6 @@ public:
 class FBuilder:virtual public FData
 {
 protected:
-
     void HookApi(string Cmd,void (*API)(vector<vector<string>>));
 
     bool CheckHooks(void);
@@ -258,7 +258,6 @@ public:
 class FParser:virtual public FData
 {
 protected:
-
     void CmdParser(string CmdIn);
 
     void SendOSCmd(string Cmd);
@@ -283,10 +282,12 @@ class ForgeHwnd:public FParser,public FBuilder
 {
 protected:
     CLICfgData s_Cfg;             // CLI configuration data.
-    int s_CurCmdPos=0;            // Current position of history commands.
+    int s_CurCmdPos;              // Current position of history commands.
     vector<string> s_HistoryCmd;  // History command stored.
-#ifdef __linux__
-    struct termios s_Original;    // Original setting of linux terminal
+#ifdef  _WIN32
+    DWORD s_Original;             // Original setting of windows terminal.
+#elif __linux__
+    struct termios s_Original;    // Original setting of linux terminal.
 #endif
     void CmdAutoComplete(string *CurCmd);
 
@@ -294,7 +295,6 @@ protected:
 
     void DetecKeyTask(CmdSurfaceData *Data);
 private:
-
     bool Check(void);
 
     void StoreCmd(string CurCmd);
@@ -302,11 +302,11 @@ private:
     void GetLastCmd(string *CurCmd);
 
     void GetNextCmd(string *CurCmd);
-#ifdef __linux__
+
     void TerminalSet();
 
     void TerminalReset();
-#endif
+
     void GenHelpInfo(void);
 
     void GenVersionInfo(void);
@@ -316,6 +316,10 @@ public:
     ForgeHwnd();
 
     void SetCLICfg(CLICfgData Cfg);
+
+    void SetCLIMode(int Mode);
+
+    void SetCLIVersion(string Version);
 
     void SetCLIMainCmd(string MainCmd);
 

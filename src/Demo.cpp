@@ -18,6 +18,7 @@ int main() {
     CLICfg.InputSleTime=10;
     CLICfg.DetectSleTime=10;      // Suggest set in '10-100'.
     CLICfg.MaxStoredCmd=20;
+    CLICfg.ProgramName="Demo";
     CLICfg.VerMode=VER_M_ALPA;
     CLICfg.Version="1.0.0.0";
     CLIF.SetCLICfg(CLICfg);

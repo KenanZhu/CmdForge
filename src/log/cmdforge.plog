@@ -1,3 +1,9 @@
+[2025-03-13]
+    1. Support cursor move by arrow keys.
+    2. Support repeatable options.
+    3. Optimze stability of system.
+    4. Add new method in ForgeHwnd: SetCLIMode(), SetCLIVersion().
+
 [2025-03-10]
     1. Optimze resource occupy of lib on Windows and Linux.
     2. Fxied the ambiguity of options's nameing of optional.
