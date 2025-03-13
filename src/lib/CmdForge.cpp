@@ -783,14 +783,14 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
                 this->GetNextCmd(&Data->CurInput);
                 Data->CursorPos=(int)Data->CurInput.size();
                 break;
-            case 0x4b: // Left
-                if (Data->CursorPos>0) {
-                    Data->CursorPos--;
-                }
-                break;
             case 0x4d: // Right
                 if (Data->CursorPos<(int)Data->CurInput.size()) {
                     Data->CursorPos++;
+                }
+                break;
+            case 0x4b: // Left
+                if (Data->CursorPos>0) {
+                    Data->CursorPos--;
                 }
                 break;
             }
@@ -817,14 +817,14 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
                     this->GetNextCmd(&Data->CurInput);
                     Data->CursorPos=(int)Data->CurInput.size();
                     break;
-                case 0x43: // Left
-                    if (Data->CursorPos>0) {
-                        Data->CursorPos--;
-                    }
-                    break;
-                case 0x44: // Right
+                case 0x43: // Right
                     if (Data->CursorPos<(int)Data->CurInput.size()) {
                         Data->CursorPos++;
+                    }
+                    break;
+                case 0x44: // Left
+                    if (Data->CursorPos>0) {
+                        Data->CursorPos--;
                     }
                     break;
                 }
@@ -937,7 +937,7 @@ void ForgeHwnd::TerminalSet(void)
     NewMode=s_Original;
     NewMode.c_lflag&=~(ICANON|ECHO);
     NewMode.c_iflag&=~(ICRNL);
-    tcsetattr(STDIN_FILENO,TCSANOW,&new_settings);
+    tcsetattr(STDIN_FILENO,TCSANOW,&NewMode);
 #endif
     return;
 }
