@@ -1,17 +1,37 @@
-﻿### 基本原理
-![原理结构](./res/images/Principle-Arch.png#pic_center)
+﻿*文档导航*
+
+| [*自述文档*](../README.md) | [*API参考手册*](APIGuide.md) | *架构设计文档* |
+
+---
+
+## CmdForge-架构设计文档
+
+---
+
+### 基本原理
+
+<p align="center">
+    <img src="./res/images/Principle-Arch.png" alt="Principle Arch">
+</p>
 
 如图所示，**CmdForge**的命令行界面维持类**ForgeHwnd**主要由**FBuilder**类和**FParser**类继承而来（*关于类及其方法的详细说明请见文档：[API参考手册](APIGuide.md)*）。这里的**FBuiler**和**FParser**虚继承自**FData**。通过虚继承机制，**ForgeHwnd**作为最终派生类将持有唯一的**FData**实例，**FData**主要负责维护回调函数类**ApiCan**池**ApiCanPool**。整体继承结构呈现菱形虚继承架构。
 
-![构建阶段](./res/images/Principle-BuildPhase.png#pic_center)
+<p align="center">
+    <img src="./res/images/Principle-BuildPhase.png" alt="Build Phase">
+</p>
 
 如图所示，构建阶段，通过**ForgeHwnd**类方法进行调用式构造，并通过**FBuilder**类处理构造参数最终访问并修改**FData**维护的**ApiCanPool**，记录并管理构造阶段产生的数据和元数据。
 
-![解析阶段](./res/images/Principle-ParserPhase.png#pic_center)
+<p align="center">
+    <img src="./res/images/Principle-ParserPhase.png" alt="Parser Phase">
+</p>
 
 用户输入命令，经过**ForgeHwnd**捕获并通过调用**FData**的数据处理方法将原始输入转换为标准格式后经由**FParser**处理后使用内部方法访问并调用**FData**中**ApiCanPool**中的回调函数，由此完成命令的解析和调用。
 
 ## 实例构建详细说明
+
+> [!NOTE]
+> 这里的示例代码采用方法接口适用的 CmdForge 构建库版本为 1.0.0 - 1.0.3。
 
 正如上文提到，**CmdForge**的构建方法是基于类方法的。也就是说，你只需要实例化一个命令行界面维持类即可完成交互界面的搭建。不过，除此之外，还有一些其它的准备工作。
 
@@ -167,12 +187,17 @@ int main() {
 在上述文件源程序中，我们设置了**CLI**的主命令：“test”，同时借助**ForgeHwnd**的**HookCmdApi**方法添加了两个自定义子命令：“-doit”，“-set”。通过自定义选项格式数据，并将自定义好的数据借助**ForgeHwnd**的**SetCmdOpt**方法分别为子命令 “-doit” 添加了三个自定义选项 “-bya/-a”，“-byb/-b”，“-byc/-c”；为子命令 “-set“ 添加了一个自定义选项 “-bya/-a”。完成了命令行界面的基础构建。同时，同时我们在示例demo中给出了两个方法提示和两个方法警告：
 
 【提示】
+
 1. 你可以在同一个子命令中添加不同的选项。
 2. 你可以为同一个包装函数链接到不同的子命令。
+
 【警告】
+
 4. 不要在同一个子命令中添加相同命名的选项。
 5. 不要将相同的子命令链接到不同的包装函数中。
 
 ### 自行构建说明
 
-该部分请参照demo实例中给出的使用方法，结合附录1内容的类和方法，进行构建。
+该部分请参照 demo 实例中给出的使用方法，结合[API参考手册](APIGuide.md)内容的类和方法，进行构建。
+
+提示：需要注意，由于项目尚处于早期阶段，本文档的示例代码会与当前版本有所不同，请以最新版本的 demo 示例为准。

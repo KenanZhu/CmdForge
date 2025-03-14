@@ -20,15 +20,17 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.3
+//  VERSION OF LIB    : 1.0.5
 // ----------------------------------------------------------------------------
 
 #pragma once
 
 //////////////////// _INCLUDE_
+#include <deque>
 #include <vector>
 #include <sstream>
 #include <iostream>
+#include <unordered_set>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -40,16 +42,16 @@
 #endif
 
 //////////////////// _DEFINE_
-#define DEFAULT_M      0          // Run Mode: default mode.
-#define HIGHPFM_M      1          // Run Mode: high performance mode.
-#define BALANCE_M      2          // Run Mode: balanced mode.
-#define LOWCOST_M      3          // Run Mode: low cost mode.
-
                                   // Space.
 #define S               std::string(" ")
 #define DS              S+S       // Two spaces.
 #define TS              S+DS      // Thress spaces.
 #define FS              S+TS      // Four spaces. 
+
+#define DEFAULT_M       0         // Run Mode: default mode.
+#define HIGHPFM_M       1         // Run Mode: high performance mode.
+#define BALANCE_M       2         // Run Mode: balanced mode.
+#define LOWCOST_M       3         // Run Mode: low cost mode.
 
 #define VER_M_DEFT      S         // Version Mode: default.
                                   // Version Mode: alpha.
@@ -61,6 +63,11 @@
 #define VER_M_SPAR      S         // Version Mode: reserved.
                                   // Default run sign.
 #define DEFT_RSIGN      std::string("> CmdForge :")
+
+#define OPTYPE_O        0x00      // Option type: optional.
+#define OPTYPE_M        0x01      // Option type: mandatory.
+#define OPTYPE_R        0x02      // Option type: repeatable.
+#define OPTYPE_D        0x04      // Option type: default.
 
 ////////////////////---------------------------------------
 
@@ -81,7 +88,7 @@ typedef struct {                  // Argument control data type.
 }ArgFmtData;
 
 typedef struct {                  // Option control data type.
-    bool Optional;                // Optional or not.
+    int OptType;                  // Option type.
     string Brief;                 // Brief description.
     string LongFmt;               // Long format option.
     string ShortFmt;              // Short format option.
@@ -152,9 +159,9 @@ protected:
                                   // Api function callbacked.
     void (*s_API)(vector<vector<string>>);
 
-    bool PreCheck(vector<string> *OptsArgs);
+    bool PreCheck(vector<string> &OptsArgs);
 
-    bool PostCheck(vector<vector<string>> OptArgs);
+    bool PostCheck(vector<vector<string>> &OptArgs);
 
     void GenHelpInfo(void);
 private:
@@ -162,11 +169,17 @@ private:
 
     vector<vector<string>> SplitOpts(vector<string> OptsArgs);
 
-    void SortOptArgs(vector<vector<string>> *OptArgs);
+    void SortOptArgs(vector<vector<string>> &OptArgs);
 public:
     ApiCan();
 
     bool Check(void);
+
+    bool BasicCheck(void);
+
+    bool OptValCheck(void);
+
+    bool ArgValCheck(void);
 
     void *API(void);
 
@@ -283,7 +296,7 @@ class ForgeHwnd:public FParser,public FBuilder
 protected:
     CLICfgData s_Cfg;             // CLI configuration data.
     int s_CurCmdPos;              // Current position of history commands.
-    vector<string> s_HistoryCmd;  // History command stored.
+    deque<string> s_HistoryCmd;   // History command stored.
 #ifdef  _WIN32
     DWORD s_Original;             // Original setting of windows terminal.
 #elif __linux__

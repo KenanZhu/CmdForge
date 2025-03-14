@@ -95,7 +95,7 @@ brew install cmake
 
 |文档名称|内容概要|
 |:-:|:-:|
-|[架构设计](./doc/ArchDesign.md)|框架模块结构与Demo详细介绍|
+|[架构设计文档](./doc/ArchDesign.md)|框架模块结构与Demo详细介绍|
 |[API参考手册](./doc/APIGuide.md)|核心类与方法详细说明|
 
 ## 问题反馈

@@ -100,7 +100,7 @@ Complete development documents in `doc/` directory:
 
 | Document | Description |
 |:-:|:-:|
-|[Architecture Design](./doc/ArchDesign.md)|Framework module structure & demo details|
+|[Architecture Design Document](./doc/ArchDesign.md)|Framework module structure & demo details|
 |[API Reference](./doc/APIGuide.md)|Core classes & methods documentation|
 
 ## Issue Reporting

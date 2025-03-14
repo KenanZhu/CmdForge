@@ -1,4 +1,14 @@
-## 类和方法
+*文档导航*
+
+| [*自述文档*](../README.md) | *API参考手册* | [*架构设计文档*](ArchDesign.md) |
+
+---
+
+## CmdForge-API 参考手册
+
+---
+
+### 类和方法
 
 这里提供了详细的说明文档，介绍每个类的具体作用和功能，并对类中的方法进行介绍。
 
@@ -51,6 +61,8 @@ Brief：主界面构建与运行维持类。
 |**public:**||
 |*ForgeHwnd()*|构造函数|
 |***void***  *SetCLICfg*(*CLICfgData*)|设置命令行运行参数|
+|***void***  *SetCLIMode*(*int*)|设置命令行运行模式|
+|***void***  *SetCLIVersion*(*std::string*)|设置命令行程序版本|
 |***void***  *SetCLIMainCmd*(*std::string*)|设置主命令|
 |***void***  *HookCmdApi(*std::string*, *void* ( *) (*std::vector< std::vector< std::string > >*))|链接命令与包装函数|
 |***void***  *SetCmdBrief*(*std::string, std::string*)|设置命令的简介说明|

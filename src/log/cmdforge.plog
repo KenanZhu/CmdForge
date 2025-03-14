@@ -1,3 +1,9 @@
+[2025-03-14]
+    1. Support more specific option type set.
+    2. Support clip board input.
+    3. Optimze performance of system.
+    4. Optimze: unify output format of the standard message.
+
 [2025-03-13]
     1. Support cursor move by arrow keys.
     2. Support repeatable options.
@@ -12,7 +18,7 @@
 [2025-03-05]
     1. Support parser the options all are (O)type and default option input.
     2. Add more usage example in demo.
-    3. Enhanced the self-check.
+    3. Optimze the self-check.
 
 [2025-03-04]
     1. Support history command select.
