@@ -1,3 +1,8 @@
+[2025-03-20]
+    1. Optimze code struct.
+    2. Optimze output infomation.
+    3. Add more detail example in demo.
+
 [2025-03-14]
     1. Support more specific option type set.
     2. Support clip board input.

@@ -1,18 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
-project(MyProject)
+project(Demo)
 
-add_subdirectory(lib)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(Demo
+add_executable(${PROJECT_NAME}
     Demo.cpp
-    APIs.h
+    lib/CmdForge.cpp
 )
 
-target_link_libraries(Demo 
-    PRIVATE CmdForge
-)
-
-target_include_directories(Demo PRIVATE
+target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )

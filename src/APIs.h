@@ -1,5 +1,6 @@
 //  \FILE  : APIs.h
 //  \BRIEF : Package your api functions here.
+// ----------------------------------------------------------------------------
 
 #pragma once
 
@@ -18,7 +19,7 @@ void process_1(vector<vector<string>> OptArgs)
 {
 ////    SPECIFIC YOUR LOGIC COMPLISH HERE
 ///////////////////////////////////////////////////////////
-	cout<<"callback process_1 by command: '"+OptArgs[0][0]+"'."<<endl;
+	cout<<"SUCCES ! callback 'process_1' by command: '"+OptArgs[0][0]+"'."<<endl;
 
 ///////////////////////////////////////////////////////////
 ////    HERE IS YOUR CODE TO PROCESS '[-opts]' AND '[-args]' 
@@ -30,10 +31,29 @@ void process_1(vector<vector<string>> OptArgs)
 ///////////////////////////////////////////////////////////
 	return;
 }
+
 void process_2(vector<vector<string>> OptArgs)
 {
 ////    SAME AS ABOVE
-	cout<<"callback process_2 by command: '"+OptArgs[0][0]+"'."<<endl;
+	cout<<"SUCCESS ! callback 'process_2' by command: '"+OptArgs[0][0]+"'."<<endl;
 ///////////////////////////////////////////////////////////
+	return;
+}
+
+void process_3(vector<vector<string>> OptArgs)
+{
+	cout<<"SUCCESS ! callback 'process_3' by command: '"+OptArgs[0][0]+"'."<<endl;
+	return;
+}
+
+void process_4(vector<vector<string>> OptArgs)
+{
+	cout<<"SUCCESS ! callback 'process_4' by command: '"+OptArgs[0][0]+"'."<<endl;
+	return;
+}
+
+void process_5(vector<vector<string>> OptArgs)
+{
+	cout<<"SUCCESS ! callback 'process_5' by command: '"+OptArgs[0][0]+"'."<<endl;
 	return;
 }
