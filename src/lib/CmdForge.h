@@ -134,13 +134,9 @@ public:
     SysOut()=default;
 
     void Cout(string Msg,int Endl=1);
-
     void StdMsg(string Msg,int Level=-1);
-
     void CurMove(int Offset);
-
     void Refresh(string RunSign,string CurCmd);
-
     void UpdateInputLength(int CurInputLength);
 };
 ////////////////////---------------------------------------
@@ -160,46 +156,36 @@ protected:
     void (*s_API)(vector<vector<string>>);
 
     bool PreCheck(vector<string> &OptsArgs);
-
     bool PostCheck(vector<vector<string>> &OptArgs);
-
     void GenHelpInfo(void);
+
 private:
     void Init(void);
-
     vector<vector<string>> SplitOpts(vector<string> OptsArgs);
-
     void SortOptArgs(vector<vector<string>> &OptArgs);
+
 public:
     ApiCan();
 
     bool Check(void);
-
     bool BasicCheck(void);
-
     bool OptValCheck(void);
-
     bool ArgValCheck(void);
 
     void *API(void);
-
     void API(vector<string> CmdOptsArgs);
 
     void SetApi(void (*API)(vector<vector<string>>));
-
     void SetBrief(string Brief);
 
     bool ExistCmd(string Cmd);
-
     int  CmdIndex(string Cmd);
-
     void AppendCmd(string Cmd);
 
     bool ExistOpt(string OptName);
-
     int  OptIndex(string OptName);
-
     void AppendOpt(OptFmtData Opt);
+
 };
 
 ////////////////////---------------------------------------
@@ -220,28 +206,25 @@ protected:
     vector<ApiCan> s_ApiCanPool;  // Api can pool.
 
     void SetCmdIn(string CmdIn);
-
     void SetMainCmd(string MainCmd);
-
     void SetCmdOptArgs(vector<string> CmdOptArgs);
 
     vector<string> SplitCmd(string CmdIn);
 
     bool ExistCmd(string Cmd);
-
     int  CmdIndex(string Cmd);
-
     void AppendCmd(string Cmd);
 
     bool ExistApiCan(ApiCan ApiCan);
-
     int  ApiCanIndex(ApiCan ApiCan);
-
     void AppendApiCan(ApiCan ApiCan);
+
 private:
     void Init(void);
+
 public:
     FData();
+
 };
 
 ////////////////////---------------------------------------
@@ -255,12 +238,14 @@ protected:
     void HookApi(string Cmd,void (*API)(vector<vector<string>>));
 
     bool CheckHooks(void);
+
 private:
 ///
 /// NONE FOR THIS CLASS
 ///
 public:
     FBuilder()=default;
+
 };
 
 ////////////////////---------------------------------------
@@ -276,14 +261,15 @@ protected:
     void SendOSCmd(string Cmd);
 
     void ForkApi(string Cmd);
-
     virtual void ForkReserved(int Index);
+
 private:
 ///
 /// NONE FOR THIS CLASS
 ///
 public:
     FParser()=default;
+
 };
 
 ////////////////////---------------------------------------
@@ -305,23 +291,19 @@ protected:
     void CmdAutoComplete(string *CurCmd);
 
     void InputCmdTask(CmdSurfaceData *Data);
-
     void DetecKeyTask(CmdSurfaceData *Data);
+
 private:
     bool Check(void);
 
     void StoreCmd(string CurCmd);
-
     void GetLastCmd(string *CurCmd);
-
     void GetNextCmd(string *CurCmd);
 
     void TerminalSet();
-
     void TerminalReset();
 
     void GenHelpInfo(void);
-
     void GenVersionInfo(void);
 
     void ForkReserved(int Index);
@@ -329,17 +311,13 @@ public:
     ForgeHwnd();
 
     void SetCLICfg(CLICfgData Cfg);
-
     void SetCLIMode(int Mode);
-
     void SetCLIVersion(string Version);
-
     void SetCLIMainCmd(string MainCmd);
 
     void HookCmdApi(string Cmd,void (*API)(vector<vector<string>>));
 
     void SetCmdBrief(string Cmd,string Brief);
-
     void SetCmdOpt(string Cmd,OptFmtData OptFmt);
 
     int  MainLoop(string RunSign=DEFT_RSIGN);
