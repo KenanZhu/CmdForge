@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.5
+//  VERSION OF LIB    : 1.0.6
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -42,27 +42,23 @@
 #endif
 
 //////////////////// _DEFINE_
-                                  // Space.
+
+                                  // Version of 'CmdForge'.
+#define FORGE_VER       std::string("1.0.6")
+
+                                  // Default run sign.
+#define DEFT_RSIGN      std::string("> CmdForge [" + FORGE_VER + "] :")
+
+                                  // Single space.
 #define S               std::string(" ")
-#define DS              S+S       // Two spaces.
-#define TS              S+DS      // Thress spaces.
-#define FS              S+TS      // Four spaces. 
+#define DS              S+S       // Double spaces.
+#define TS              S+DS      // Triple spaces.
+#define QS              S+TS      // ​​Quadruple spaces.
 
 #define DEFAULT_M       0         // Run Mode: default mode.
 #define HIGHPFM_M       1         // Run Mode: high performance mode.
 #define BALANCE_M       2         // Run Mode: balanced mode.
 #define LOWCOST_M       3         // Run Mode: low cost mode.
-
-#define VER_M_DEFT      S         // Version Mode: default.
-                                  // Version Mode: alpha.
-#define VER_M_ALPA      std::string("alpha")
-                                  // Version Mode: beta.
-#define VER_M_BETA      std::string("beta")
-                                  // Version Mode: stable.
-#define VER_M_RELE      std::string("stable")
-#define VER_M_SPAR      S         // Version Mode: reserved.
-                                  // Default run sign.
-#define DEFT_RSIGN      std::string("> CmdForge :")
 
 #define OPTYPE_O        0x00      // Option type: optional.
 #define OPTYPE_M        0x01      // Option type: mandatory.
@@ -82,35 +78,34 @@ class FBuilder;
 class FParser;
 class ForgeHwnd;
 
-typedef struct {                  // Argument control data type.
-    int ArgType;                  // Argument type.
+struct ArgFmtData {               // Argument control data type.
+    int ArgType=0;                // Argument type.
     string Brief;                 // Brief description.
-}ArgFmtData;
+};
 
-typedef struct {                  // Option control data type.
-    int OptType;                  // Option type.
+struct OptFmtData {               // Option control data type.
+    int OptType=0;                // Option type.
     string Brief;                 // Brief description.
     string LongFmt;               // Long format option.
     string ShortFmt;              // Short format option.
     vector<ArgFmtData> Args;      // Arguments of option.
-}OptFmtData;
+};
 
-typedef struct {                  // CLI configuration data type.
-    int MaxStoredCmd;             // Maximum stored history commands.
+struct CLICfgData {               // CLI configuration data type.
+    int MaxStoredCmd=0;           // Maximum stored history commands.
 
-    int InputSleTime;             // Sleep time of command input thread.
-    int DetectSleTime;            // Sleep time of key detect thread.
+    int InputSleepTime=0;         // Sleep time of command input thread.
+    int DetectSleepTime=0;        // Sleep time of key detect thread.
 
     string ProgramName;           // Name of program.
-    string VerMode;               // Version mode of CLI.
     string Version;               // Version info of CLI.
-}CLICfgData;
+};
 
-typedef struct {                  // Shared data type between threads.
-    int CursorPos;                // Cursor position of command.
-    bool ExitFlag;                // Exit flag of thread.
+struct CmdExchangeData {          // Exchanged data type between threads.
+    int CursorPos=0;              // Cursor position of command.
+    bool ExitFlag=false;          // Exit flag of thread.
     string CurInput;              // Current input.
-}CmdSurfaceData;
+};
 
 #ifdef __linux__
 extern bool _kbhit(void);         // Keyborad hit detect.
@@ -124,20 +119,22 @@ extern int _getch(void);          // Get keyborad input.
 ///////////////////////////////////////////////////////////
 class SysOut
 {
+public:
+    SysOut(void)=default;
+    virtual ~SysOut(void)=default;
 protected:
-    int s_CurInputLength=0;       // Current input length in terminal.
-private:
 ///
 /// NONE FOR THIS CLASS
 ///
+private:
+    int s_CurInputLength=0;       // Current input length in terminal.
 public:
-    SysOut()=default;
-
     void Cout(string Msg,int Endl=1);
     void StdMsg(string Msg,int Level=-1);
     void CurMove(int Offset);
     void Refresh(string RunSign,string CurCmd);
-    void UpdateInputLength(int CurInputLength);
+    void SetInputLength(int CurInputLength);
+    int  GetInputLength(void);
 };
 ////////////////////---------------------------------------
 
@@ -146,31 +143,40 @@ public:
 ///////////////////////////////////////////////////////////
 class ApiCan:public SysOut
 {
+public:
+    ApiCan(void);
+    ~ApiCan(void);
 protected:
+    /*
+     * These check the callback arguments on parser phase.
+     */
+    virtual bool PreCheck(vector<string> &OptsArgs);
+    virtual bool PostCheck(vector<vector<string>> &OptArgs);
+
+    /*
+     * These check the forge valid of this ApiCan on build phase.
+     */
+    virtual bool BasicCheck(void);
+    virtual bool OptValCheck(void);
+    virtual bool ArgValCheck(void);
+private:
     string s_Brief;               // Brief description of api function.
     vector<string> s_Cmds;        // Command of api function.
     vector<OptFmtData> s_Opts;    // Options of api command.h
                                   // Arguments arranged by option.
     vector<vector<string>> s_OptArgs;
-                                  // Api function callbacked.
+                                  // Api function pointer callbacked.
     void (*s_API)(vector<vector<string>>);
 
-    bool PreCheck(vector<string> &OptsArgs);
-    bool PostCheck(vector<vector<string>> &OptArgs);
-    void GenHelpInfo(void);
-
-private:
     void Init(void);
+
     vector<vector<string>> SplitOpts(vector<string> OptsArgs);
     void SortOptArgs(vector<vector<string>> &OptArgs);
 
+    string OutputFormatting(string Str1,string Str2);
+    void GenHelpInfo(bool isCalled);
 public:
-    ApiCan();
-
     bool Check(void);
-    bool BasicCheck(void);
-    bool OptValCheck(void);
-    bool ArgValCheck(void);
 
     void *API(void);
     void API(vector<string> CmdOptsArgs);
@@ -185,7 +191,6 @@ public:
     bool ExistOpt(string OptName);
     int  OptIndex(string OptName);
     void AppendOpt(OptFmtData Opt);
-
 };
 
 ////////////////////---------------------------------------
@@ -195,6 +200,9 @@ public:
 ///////////////////////////////////////////////////////////
 class FData:public SysOut
 {
+public:
+    FData(void);
+    virtual ~FData(void);
 protected:
     int s_ResCmdNum;              // Number of reserved command.
     string s_CmdIn;               // Command inputed by user.
@@ -205,11 +213,13 @@ protected:
     vector<string> s_CmdOptsArgs; // Command splited by options, arguments.
     vector<ApiCan> s_ApiCanPool;  // Api can pool.
 
+    vector<string> SplitCmd(string CmdIn);
+private:
+    void Init(void);
+public:
     void SetCmdIn(string CmdIn);
     void SetMainCmd(string MainCmd);
     void SetCmdOptArgs(vector<string> CmdOptArgs);
-
-    vector<string> SplitCmd(string CmdIn);
 
     bool ExistCmd(string Cmd);
     int  CmdIndex(string Cmd);
@@ -218,13 +228,6 @@ protected:
     bool ExistApiCan(ApiCan ApiCan);
     int  ApiCanIndex(ApiCan ApiCan);
     void AppendApiCan(ApiCan ApiCan);
-
-private:
-    void Init(void);
-
-public:
-    FData();
-
 };
 
 ////////////////////---------------------------------------
@@ -234,18 +237,21 @@ public:
 ///////////////////////////////////////////////////////////
 class FBuilder:virtual public FData
 {
+public:
+    FBuilder()=default;
+    virtual ~FBuilder()=default;
 protected:
-    void HookApi(string Cmd,void (*API)(vector<vector<string>>));
-
-    bool CheckHooks(void);
-
+///
+/// NONE FOR THIS CLASS
+///  
 private:
 ///
 /// NONE FOR THIS CLASS
 ///
 public:
-    FBuilder()=default;
+    bool CheckHooks(void);
 
+    void HookApi(string Cmd,void (*API)(vector<vector<string>>));
 };
 
 ////////////////////---------------------------------------
@@ -255,21 +261,21 @@ public:
 ///////////////////////////////////////////////////////////
 class FParser:virtual public FData
 {
+public:
+    FParser()=default;
+    virtual ~FParser()=default;
 protected:
-    void CmdParser(string CmdIn);
-
-    void SendOSCmd(string Cmd);
-
-    void ForkApi(string Cmd);
     virtual void ForkReserved(int Index);
-
 private:
 ///
 /// NONE FOR THIS CLASS
 ///
 public:
-    FParser()=default;
+    void CmdParser(string CmdIn);
 
+    void SendOSCmd(string Cmd);
+
+    void ForkApi(string Cmd);
 };
 
 ////////////////////---------------------------------------
@@ -277,8 +283,11 @@ public:
 /// THIS CLASS IS THE CONTROLLER OF CMDFORGE
 /// 
 ///////////////////////////////////////////////////////////
-class ForgeHwnd:public FParser,public FBuilder
+class ForgeHwnd:private FParser,private FBuilder
 {
+public:
+    ForgeHwnd(void);
+    ~ForgeHwnd(void);
 protected:
     CLICfgData s_Cfg;             // CLI configuration data.
     int s_CurCmdPos;              // Current position of history commands.
@@ -288,11 +297,15 @@ protected:
 #elif __linux__
     struct termios s_Original;    // Original setting of linux terminal.
 #endif
+    void TerminalSet(void);
+    void TerminalReset(void);
+
     void CmdAutoComplete(string *CurCmd);
 
-    void InputCmdTask(CmdSurfaceData *Data);
-    void DetecKeyTask(CmdSurfaceData *Data);
-
+    void InputCmdTask(CmdExchangeData *Data);
+    void DetecKeyTask(CmdExchangeData *Data);
+    
+    void ForkReserved(int Index) override;
 private:
     bool Check(void);
 
@@ -300,16 +313,9 @@ private:
     void GetLastCmd(string *CurCmd);
     void GetNextCmd(string *CurCmd);
 
-    void TerminalSet();
-    void TerminalReset();
-
     void GenHelpInfo(void);
     void GenVersionInfo(void);
-
-    void ForkReserved(int Index);
 public:
-    ForgeHwnd();
-
     void SetCLICfg(CLICfgData Cfg);
     void SetCLIMode(int Mode);
     void SetCLIVersion(string Version);

@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.5
+//  VERSION OF LIB    : 1.0.6
 // ----------------------------------------------------------------------------
 
 #include "CmdForge.h"
@@ -84,7 +84,7 @@ void SysOut::StdMsg(string Msg,int Level)
     string LevelSign;
 
     switch (Level) {
-    case 0:LevelSign=FS; break;
+    case 0:LevelSign=DS; break;
     case 1:LevelSign="[info ] "; break;
     case 2:LevelSign="[warn ] "; break;
     case 3:LevelSign="[error] "; break;
@@ -102,31 +102,41 @@ void SysOut::CurMove(int SetPos)
 
     NewPos=max(0,min(SetPos,(int)s_CurInputLength));
 
-    cout<<"\033[s"<<flush;
-    cout<<"\033["+to_string(NewPos+1)+"G"<<flush;
+    this->Cout("\033[s", 0);
+    this->Cout("\033["+to_string(NewPos+1)+"G", 0);
 
     return;
 }
 
 void SysOut::Refresh(string RunSign,string CurCmd)
 {
-    this->UpdateInputLength((int)(RunSign.size()+CurCmd.size()));
-    cout<<"\33[2K\r"<<RunSign<<CurCmd<<flush;
+    this->SetInputLength((int)(RunSign.size()+CurCmd.size()));
+
+    this->Cout("\33[2K\r"+RunSign+CurCmd, 0);
 
     return;
 }
 
-void SysOut::UpdateInputLength(int CurInputLength)
+void SysOut::SetInputLength(int CurInputLength)
 {
     s_CurInputLength=CurInputLength;
 
     return;
 }
 
+int SysOut::GetInputLength(void)
+{
+    return s_CurInputLength;
+}
+
 /////////////////////////////////////////////////////////////////////
 ///    CLASS : ApiCan
 /////////////////////////////////////////////////////////////////////
-ApiCan::ApiCan()
+ApiCan::ApiCan(void)
+{
+    this->Init();
+}
+ApiCan::~ApiCan(void)
 {
     this->Init();
 }
@@ -135,51 +145,52 @@ ApiCan::ApiCan()
 bool ApiCan::PreCheck(vector<string> &OptsArgs)
 {
     int i,Opts;
-    bool Flag=true;
+    bool State;
     
+    State=true;
     Opts=(int)s_Opts.size();
     if (OptsArgs.size()==0) {               // CHECK: no [-opt] part.
-        if (!Opts) return Flag=true;
+        if (!Opts) return State=true;
 
         this->StdMsg("no [-opt] part",0);
         this->StdMsg("need help? use [-opt] '-help/-h'",0);
-        Flag=false;
+        State=false;
     }                                       // CHECK: '-help/-h' [-opt].
     else if (OptsArgs[0]=="-help"||OptsArgs[0]=="-h") {
-        this->GenHelpInfo();
-        Flag=false;
+        this->GenHelpInfo(true);
+        State=false;
     }                                       // CHECK: use default [-opt].
     else if (!this->ExistOpt(OptsArgs[0])) {
         for (i=0;i<Opts;i++) if (s_Opts[i].OptType&OPTYPE_D) {
             OptsArgs.insert(OptsArgs.begin(),s_Opts[0].LongFmt);
         }
-        Flag=true;
+        State=true;
     }
-    return Flag;
+    return State;
 }
 
 bool ApiCan::PostCheck(vector<vector<string>> &OptArgs)
 {
-    bool Flag;
+    bool State;
     int i,Index,ExpArgs,ActArgs,ExpOpts,ActOpts,RepeatTimes,Size,Opts;
     unordered_multiset<string> InputOpts;
 
-    Flag=true;
+    State=true;
     ExpOpts=ActOpts=0;
     Size=(int)OptArgs.size(),Opts=(int)s_Opts.size();
 
-    for (i=0;i<Opts;i++) if (s_Opts[i].OptType%OPTYPE_M) ExpOpts++;
+    for (i=0;i<Opts;i++) if (s_Opts[i].OptType&OPTYPE_M) ExpOpts++;
     for (i=0;i<Size;i++) InputOpts.insert(OptArgs[i][0]);
 
     // Check the options.
     //
     // It will check if lost mandatory options.
     // It will check if the unrepeatable option is repeat.
-    if (Opts&&Size==0) {this->StdMsg("no valid [-opt].",0); return Flag=false;}
+    if (Opts&&Size==0) {this->StdMsg("no valid [-opt].",0); return State=false;}
 
     // Find if lost mandatory options.
     for (i=0;i<Opts;i++) {
-        if (s_Opts[i].OptType&OPTYPE_O) continue;
+        if (!(s_Opts[i].OptType&OPTYPE_M)) continue;
 
         if (!InputOpts.count(s_Opts[i].LongFmt)&&
             !InputOpts.count(s_Opts[i].ShortFmt)) {
@@ -190,7 +201,7 @@ bool ApiCan::PostCheck(vector<vector<string>> &OptArgs)
     }
     if (ActOpts<ExpOpts) {
         this->StdMsg("lost "+to_string(ExpOpts-ActOpts)+" mandatory [-opt](s)",0);
-        return Flag=false;
+        return State=false;
     }
     // Find if the unrepeatable option is repeat.
     for (i=0;i<Opts;i++) {
@@ -214,72 +225,20 @@ bool ApiCan::PostCheck(vector<vector<string>> &OptArgs)
         ActArgs=(int)OptArgs[i].size()-1;
         if (ExpArgs!=ActArgs) {
             this->StdMsg("[-opt] '"+OptArgs[i][0]+"' expects "+to_string(ExpArgs)+" [-arg](s), but got "+to_string(ActArgs),0);
-            Flag=false;
+            State=false;
         }
     }
-    return Flag;
-}
-
-void ApiCan::GenHelpInfo(void)
-{
-    int i,Cmds,Opts;
-    string TempMsg;
-    
-    Cmds=(int)s_Cmds.size();
-    Opts=(int)s_Opts.size();
-
-    TempMsg.clear();
-    TempMsg=FS+"[-cmd]      =";
-    for (i=0;i<Cmds;i++) TempMsg+=S+s_Cmds[i];
-    this->Cout(TempMsg);
-    this->Cout(FS+"  $- brief  :"+s_Brief);
-    this->Cout(FS+"  $- usage  :"+s_Cmds[0]+" [-opt]/... [-arg]/...");
-    if (Opts) this->Cout("");
-
-    for (i=0;i<Opts;i++) {
-        TempMsg.clear();
-        TempMsg+=FS;
-        
-        // Generate the option type list.
-        if (s_Opts[i].OptType&OPTYPE_M) TempMsg+="M";
-        else TempMsg+="0";
-        if (s_Opts[i].OptType&OPTYPE_D) TempMsg+="D";
-        else TempMsg+=" ";
-        if (s_Opts[i].OptType&OPTYPE_R) TempMsg+="R";
-        else TempMsg+=" ";
-        
-        TempMsg+=DS+" [-opt]: "+s_Opts[i].LongFmt+"/"+s_Opts[i].ShortFmt;
-        TempMsg+=" brief: "+s_Opts[i].Brief;
-        this->Cout(TempMsg);
-    }
-    return;
-}
-///    PRIVATE :
-/////////////////////////////////////////////////
-void ApiCan::Init(void)
-{
-    s_API=nullptr;
-    s_Cmds.clear();
-    s_Brief.clear();
-
-    return;
-}
-
-bool ApiCan::Check(void)
-{
-    bool State=true;
-    
-    if (!this->BasicCheck()) return State=false;
-    else if (!this->OptValCheck()) return State=false;
-    else if (!this->ArgValCheck()) return State=false;
-    
     return State;
 }
 
 bool ApiCan::BasicCheck(void)
 {
-    bool State=true;
-    int Opts=(int)s_Opts.size(),Cmds=(int)s_Cmds.size();
+    bool State;
+    int Opts,Cmds;
+    
+    State = true;
+    Opts=(int)s_Opts.size();
+    Cmds=(int)s_Cmds.size();
 
     if (s_API==nullptr) {
         this->StdMsg("no api was set in a api can",3);
@@ -298,8 +257,13 @@ bool ApiCan::BasicCheck(void)
 
 bool ApiCan::OptValCheck(void)
 {
-    bool State=true;
-    int i,ExpDefault=1,ActDefault=0,Opts=(int)s_Opts.size();
+    bool State;
+    int i,Opts,ExpDefault,ActDefault;
+    
+    State=true;
+    ExpDefault=1;
+    ActDefault=0;
+    Opts=(int)s_Opts.size();
 
     for (i=0;i<Opts;i++) {
         if (s_Opts[i].LongFmt.empty()&&s_Opts[i].ShortFmt.empty()) {
@@ -317,8 +281,11 @@ bool ApiCan::OptValCheck(void)
 
 bool ApiCan::ArgValCheck(void)
 {
-    bool State=true;
-    int i,Opts=(int)s_Opts.size();
+    bool State;
+    int i,Opts;
+
+    State=true;
+    Opts=(int)s_Opts.size();
 
     for (i=0;i<Opts;i++) {
         if (s_Opts[i].Args.size()==0) {
@@ -327,13 +294,25 @@ bool ApiCan::ArgValCheck(void)
     }
     return State;
 }
+///    PRIVATE :
+/////////////////////////////////////////////////
+void ApiCan::Init(void)
+{
+    s_API=nullptr;
+    s_Cmds.clear();
+    s_Brief.clear();
+    s_OptArgs.clear();
+
+    return;
+}
 
 vector<vector<string>> ApiCan::SplitOpts(vector<string> OptsArgs)
 {
     vector<string> TempOptArg;
     vector<vector<string>> TempOptArgs;
-    int i,j,k,Size=(int)OptsArgs.size();
-
+    int i,j,k,Size;
+        
+    Size=(int)OptsArgs.size();
     for (i=0;i<Size;i++) {
         if (this->ExistOpt(OptsArgs[i])) {
             TempOptArg.push_back(OptsArgs[i]);
@@ -360,8 +339,94 @@ void ApiCan::SortOptArgs(vector<vector<string>> &OptArgs)
 {
     return;
 }
+
+string ApiCan::OutputFormatting(string Str1, string Str2)
+{
+    size_t OffsetPos,Last,Next,Target;
+
+    if (Str1.length()>=40) {
+        Str1.resize(101,' ');
+        Str1.append("\n").append(40,' ');
+    } else {
+        Str1.resize(40,' ');
+    }
+
+    if (Str2.length()>60) {
+        OffsetPos=59;
+        Last=Str2.rfind(' ',OffsetPos);
+        Next=Str2.find(' ',OffsetPos);
+
+        Target=string::npos;
+        if (Last!=string::npos&&Next!=string::npos) {
+            Target=(OffsetPos-Last<=Next-OffsetPos)?Last:Next;
+        }
+        else if (Last!=string::npos) {
+            Target=Last;
+        }
+        else if (Next!=string::npos) {
+            Target=Next;
+        }
+
+        if (Target!=string::npos) {
+            Str2.insert(Target+1,1,'\n');
+            Str2.insert(Target+2,40,' ');
+        }
+    }
+    return Str1 + Str2;
+}
+
+void ApiCan::GenHelpInfo(bool isCalled)
+{
+    int i,Cmds,Opts;
+    string TempMsg;
+    
+    Cmds=(int)s_Cmds.size();
+    Opts=(int)s_Opts.size();
+
+    TempMsg.clear();
+    TempMsg=DS+s_Cmds[0];
+    for (i=1;i<Cmds;i++) TempMsg+="/ "+s_Cmds[i];
+
+    if (!isCalled) TempMsg=this->OutputFormatting(TempMsg,s_Brief);
+    else TempMsg=DS+"Command == "+TempMsg;
+    this->Cout(TempMsg);
+
+    if (!isCalled) return;
+    this->Cout(DS+"Usage : "+s_Cmds[0]+" [-opt]/... [-arg]/...");
+
+    if (Opts) this->Cout("\n  Options : ");
+    for (i=0;i<Opts;i++) {
+        TempMsg.clear();
+        TempMsg+=DS;
+        
+        // Generate the option type list.
+        if (s_Opts[i].OptType&OPTYPE_M) TempMsg+="M";
+        else TempMsg+="0";
+        if (s_Opts[i].OptType&OPTYPE_D) TempMsg+="D";
+        else TempMsg+=" ";
+        if (s_Opts[i].OptType&OPTYPE_R) TempMsg+="R";
+        else TempMsg+=" ";
+        
+        TempMsg+=DS+s_Opts[i].LongFmt+"/ "+s_Opts[i].ShortFmt;
+        TempMsg=this->OutputFormatting(TempMsg,s_Opts[i].Brief);
+        this->Cout(TempMsg);
+    }
+    return;
+}
 ///    PUBLIC :
 /////////////////////////////////////////////////
+bool ApiCan::Check(void)
+{
+    bool State;
+        
+    State=true;
+    if (!this->BasicCheck()) return State=false;
+    else if (!this->OptValCheck()) return State=false;
+    else if (!this->ArgValCheck()) return State=false;
+    
+    return State;
+}
+
 void *ApiCan::API(void)
 {
     return (void *)s_API;
@@ -370,6 +435,12 @@ void *ApiCan::API(void)
 void ApiCan::API(vector<string> CmdOptsArgs)
 {
     vector<string> OptsArgs;
+
+    // Response to the main help command.
+    if (CmdOptsArgs.size()==1) {
+        if (CmdOptsArgs[0]=="-help") this->GenHelpInfo(false);
+        return;
+    }
 
     // Remove [main cmd] & [-cmd] part.
     CmdOptsArgs.erase(CmdOptsArgs.begin());
@@ -483,7 +554,18 @@ FData::FData()
 {
     this->Init();
 }
+FData::~FData()
+{
+    this->Init();
+}
 ///    PROTECTED :
+/////////////////////////////////////////////////
+
+///
+///    NONE FOR THIS CLASS
+///
+
+///    PUBLIC :
 /////////////////////////////////////////////////
 void FData::SetCmdIn(string CmdIn)
 {
@@ -599,12 +681,6 @@ void FData::Init(void)
 
     return;
 }
-///    PUBLIC :
-/////////////////////////////////////////////////
-
-///
-///    NONE FOR THIS CLASS
-///
 
 /////////////////////////////////////////////////////////////////////
 ///    CLASS : FBuilder
@@ -616,6 +692,38 @@ void FData::Init(void)
 
 ///    PROTECTED :
 /////////////////////////////////////////////////
+
+///
+///    NONE FOR THIS CLASS
+///
+
+///    PRIVATE :
+/////////////////////////////////////////////////
+
+///
+///    NONE FOR THIS CLASS
+///
+
+///    PUBLIC :
+/////////////////////////////////////////////////
+bool FBuilder::CheckHooks(void)
+{
+    int i,Cmds;
+    bool State;
+
+    State=true;
+    Cmds=(int)s_CmdIndex.size();
+    for (i=s_ResCmdNum;i<Cmds;i++) {
+        if (s_ApiCanPool[s_CmdApiTable[i]].API()==nullptr) {
+            this->StdMsg("you are hooking [-cmd] '"+s_CmdIndex[i]+"' with a invaild <ApiCan.API() -> null>",4);
+            State=false;
+        }
+    }
+    if (!State) this->StdMsg("please check your command hooks",2);
+    
+    return State;
+}
+
 void FBuilder::HookApi(string Cmd,void (*API)(vector<vector<string>>))
 {
     int Index;
@@ -641,36 +749,6 @@ void FBuilder::HookApi(string Cmd,void (*API)(vector<vector<string>>))
     return;
 }
 
-bool FBuilder::CheckHooks(void)
-{
-    int i,Cmds;
-    bool State=true;
-    
-    Cmds=(int)s_CmdIndex.size();
-    for (i=s_ResCmdNum;i<Cmds;i++) {
-        if (s_ApiCanPool[s_CmdApiTable[i]].API()==nullptr) {
-            this->StdMsg("you are hooking [-cmd] '"+s_CmdIndex[i]+"' with a invaild <ApiCan.API() -> null>",4);
-            State=false;
-        }
-    }
-    if (!State) this->StdMsg("please check your command hooks",2);
-    
-    return State;
-}
-///    PRIVATE :
-/////////////////////////////////////////////////
-
-///
-///    NONE FOR THIS CLASS
-///
-
-///    PUBLIC :
-/////////////////////////////////////////////////
-
-///
-///    NONE FOR THIS CLASS
-///
-
 /////////////////////////////////////////////////////////////////////
 ///    CLASS : FParser
 /////////////////////////////////////////////////////////////////////
@@ -680,6 +758,19 @@ bool FBuilder::CheckHooks(void)
 ///
 
 ///    PROTECTED :
+/////////////////////////////////////////////////
+void FParser::ForkReserved(int Index)
+{
+    return;
+}
+///    PRIVATE :
+/////////////////////////////////////////////////
+
+///
+///    NONE FOR THIS CLASS
+///
+
+///    PUBLIC :
 /////////////////////////////////////////////////
 void FParser::CmdParser(string CmdIn)
 {
@@ -731,25 +822,6 @@ void FParser::ForkApi(string Cmd)
 
     return;
 }
-
-void FParser::ForkReserved(int Index)
-{
-    return;
-}
-///    PRIVATE :
-/////////////////////////////////////////////////
-
-///
-///    NONE FOR THIS CLASS
-///
-
-///    PUBLIC :
-/////////////////////////////////////////////////
-
-///
-///    NONE FOR THIS CLASS
-///
-
 /////////////////////////////////////////////////////////////////////
 ///    CLASS : ForgeHwnd
 /////////////////////////////////////////////////////////////////////
@@ -759,12 +831,11 @@ ForgeHwnd::ForgeHwnd()
     s_HistoryCmd.clear();
 
     // Init of config
-    s_Cfg.VerMode=VER_M_DEFT;
     s_Cfg.Version.clear();
     s_Cfg.ProgramName.clear();
     s_Cfg.MaxStoredCmd=10;
-    s_Cfg.InputSleTime=30;
-    s_Cfg.DetectSleTime=30;
+    s_Cfg.InputSleepTime=30;
+    s_Cfg.DetectSleepTime=30;
 
     // This is the reserved command:
     // Lacking hook of api callback,you can add but do not remove them.
@@ -780,8 +851,50 @@ ForgeHwnd::ForgeHwnd()
 
     s_ResCmdNum=(int)s_CmdIndex.size();
 }
+ForgeHwnd::~ForgeHwnd()
+{
+}
 ///    PROTECTED :
 /////////////////////////////////////////////////
+void ForgeHwnd::TerminalSet(void)
+{
+#ifdef _WIN32
+    DWORD NewMode;
+    HANDLE hStdin;
+
+    hStdin=GetStdHandle(STD_INPUT_HANDLE);
+    if (hStdin==INVALID_HANDLE_VALUE) return;
+    GetConsoleMode(hStdin,&s_Original);
+    NewMode=s_Original;
+    NewMode&=~(ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT);
+    SetConsoleMode(hStdin,NewMode);
+#elif __linux__
+    struct termios NewMode;
+
+    tcgetattr(STDIN_FILENO,&s_Original);
+    NewMode=s_Original;
+    NewMode.c_lflag&=~(ICANON|ECHO);
+    NewMode.c_iflag&=~(ICRNL);
+    tcsetattr(STDIN_FILENO,TCSANOW,&NewMode);
+#endif
+    return;
+}
+
+void ForgeHwnd::TerminalReset(void)
+{
+#ifdef _WIN32
+    HANDLE hStdin;
+
+    hStdin=GetStdHandle(STD_INPUT_HANDLE);
+    if (hStdin!=INVALID_HANDLE_VALUE) {
+        SetConsoleMode(hStdin,s_Original);
+    }
+#elif __linux__
+    tcsetattr(STDIN_FILENO,TCSANOW,&s_Original);
+#endif
+    return;
+}
+
 void ForgeHwnd::CmdAutoComplete(string *CurCmd)
 {
     int i,Cmds;
@@ -808,7 +921,7 @@ void ForgeHwnd::CmdAutoComplete(string *CurCmd)
     return;
 }
 
-void ForgeHwnd::InputCmdTask(CmdSurfaceData *Data)
+void ForgeHwnd::InputCmdTask(CmdExchangeData *Data)
 {
     size_t p;
 
@@ -826,14 +939,14 @@ void ForgeHwnd::InputCmdTask(CmdSurfaceData *Data)
         s_CurCmdPos=(int)s_HistoryCmd.size();
     }
 #ifdef _WIN32
-    Sleep(s_Cfg.InputSleTime);
+    Sleep(s_Cfg.InputSleepTime);
 #elif __linux__
-    usleep(s_Cfg.InputSleTime*1000);
+    usleep(s_Cfg.InputSleepTime*1000);
 #endif
     return;
 }
 
-void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
+void ForgeHwnd::DetecKeyTask(CmdExchangeData *Data)
 {
     int KeyVal;
 
@@ -841,9 +954,9 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
     while (!Data->ExitFlag) {
         if (!_kbhit()) {
 #ifdef _WIN32
-            Sleep(s_Cfg.DetectSleTime);
+            Sleep(s_Cfg.DetectSleepTime);
 #elif __linux__
-            usleep(s_Cfg.DetectSleTime*1000);
+            usleep(s_Cfg.DetectSleepTime*1000);
 #endif
             continue;
         }
@@ -926,8 +1039,7 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
                 break;
             case 0x0d: // Enter
                 Data->CurInput+='\n';
-                this->InputCmdTask(Data);
-                break;
+                return;
             case 0x1b: // Esc
                 Data->ExitFlag=true;
                 break;
@@ -945,6 +1057,32 @@ void ForgeHwnd::DetecKeyTask(CmdSurfaceData *Data)
     return;
 }
 
+void ForgeHwnd::ForkReserved(int Index)
+{
+    // Reserved command:
+    // -help : generate help message of all api.
+    // -sys  : reserved system interface.
+    // -ver  : generate version information of this program.
+    // -quit : quit this program.
+    //
+    // YOU CAN ADD YOUR OWN RESERVED COMMAND HERE.
+    switch (Index) {
+    case 0: // -help
+        this->GenHelpInfo(); break;
+    case 1: // -sys
+        if (s_CmdOptsArgs.size()<3) return;
+        this->SendOSCmd(s_CmdOptsArgs[2]); break;
+    case 2: // -ver
+        this->GenVersionInfo(); break;
+    case 3: // -quit
+        exit(0); break;
+    default:
+        break;
+    }
+    return;
+}
+///    PRIVATE :
+/////////////////////////////////////////////////
 bool ForgeHwnd::Check(void)
 {
     bool State;
@@ -960,8 +1098,6 @@ bool ForgeHwnd::Check(void)
     return State;
 }
 
-///    PRIVATE :
-/////////////////////////////////////////////////
 void ForgeHwnd::StoreCmd(string CurCmd)
 {
     if ((int)s_HistoryCmd.size()>=s_Cfg.MaxStoredCmd) {
@@ -992,55 +1128,16 @@ void ForgeHwnd::GetNextCmd(string *CurCmd)
     return;
 }
 
-void ForgeHwnd::TerminalSet(void)
-{
-#ifdef _WIN32
-    DWORD NewMode;
-    HANDLE hStdin;
-
-    hStdin=GetStdHandle(STD_INPUT_HANDLE);
-    if (hStdin==INVALID_HANDLE_VALUE) return;
-    GetConsoleMode(hStdin,&s_Original);
-    NewMode=s_Original;
-    NewMode&=~(ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT);
-    SetConsoleMode(hStdin,NewMode);
-#elif __linux__
-    struct termios NewMode;
-
-    tcgetattr(STDIN_FILENO,&s_Original);
-    NewMode=s_Original;
-    NewMode.c_lflag&=~(ICANON|ECHO);
-    NewMode.c_iflag&=~(ICRNL);
-    tcsetattr(STDIN_FILENO,TCSANOW,&NewMode);
-#endif
-    return;
-}
-
-void ForgeHwnd::TerminalReset(void)
-{
-#ifdef _WIN32
-    HANDLE hStdin;
-
-    hStdin=GetStdHandle(STD_INPUT_HANDLE);
-    if (hStdin!=INVALID_HANDLE_VALUE) {
-        SetConsoleMode(hStdin,s_Original);
-    }
-#elif __linux__
-    tcsetattr(STDIN_FILENO,TCSANOW,&s_Original);
-#endif
-    return;
-}
-
 void ForgeHwnd::GenHelpInfo(void)
 {
     int i,Apis;
     
     Apis=(int)s_ApiCanPool.size();
-    this->Cout(FS+"$- usage: "+s_MainCmd+" [-cmd] [-opt]/... [-arg]/...");
+    this->Cout(DS+"Usage : "+s_MainCmd+" [-cmd] [-opt]/... [-arg]/...\n");
 
+    this->Cout(DS+"Commands : ");
     for (i=0;i<Apis;i++) {
-        this->Cout("");
-        s_ApiCanPool[i].API({"","","-help"});
+        s_ApiCanPool[i].API({"-help"});
     }
     return;
 }
@@ -1049,36 +1146,11 @@ void ForgeHwnd::GenVersionInfo(void)
 {
     this->Cout("___________________________________________");
     this->Cout("  "+s_Cfg.ProgramName                       );
-    this->Cout("  version: "+s_Cfg.Version+" "+s_Cfg.VerMode);
-    this->Cout("___________________________________________");
-    this->Cout("  Powered by <CmdForge>                    ");
+    this->Cout("  Version: "+s_Cfg.Version                  );
+    this->Cout("");
+    this->Cout("____________Powered by CmdForge____________");
     this->Cout("");
     
-    return;
-}
-
-void ForgeHwnd::ForkReserved(int Index)
-{
-    // Reserved command:
-    // -help : generate help message of all api.
-    // -sys  : reserved system interface.
-    // -ver  : generate version information of this program.
-    // -quit : quit this program.
-    //
-    // YOU CAN ADD YOUR OWN RESERVED COMMAND HERE.
-    switch (Index) {
-        case 0: // -help
-            this->GenHelpInfo(); break;
-        case 1: // -sys
-            if (s_CmdOptsArgs.size()<3) return;
-            this->SendOSCmd(s_CmdOptsArgs[2]); break;
-        case 2: // -ver
-            this->GenVersionInfo(); break;
-        case 3: // -quit
-            exit(0); break;
-        default:
-            break;
-    }
     return;
 }
 ///    PUBLIC :
@@ -1092,29 +1164,30 @@ void ForgeHwnd::SetCLICfg(CLICfgData Cfg)
 
 void ForgeHwnd::SetCLIMode(int Mode)
 {
+    int InputSleepTime, DetectSleepTime, MaxStoredCmd;
+
     switch (Mode)
     {
-    case DEFAULT_M:
-        s_Cfg.MaxStoredCmd=30;
-        s_Cfg.InputSleTime=30;
-        s_Cfg.DetectSleTime=30;
+    case DEFAULT_M:MaxStoredCmd=30;
+        InputSleepTime=DetectSleepTime=30;
         break;
-    case HIGHPFM_M:
-        s_Cfg.MaxStoredCmd=10;
-        s_Cfg.InputSleTime=10;
-        s_Cfg.DetectSleTime=50;
+    case HIGHPFM_M:MaxStoredCmd=50;
+        InputSleepTime=DetectSleepTime=10;
         break;
-    case BALANCE_M:
-        s_Cfg.MaxStoredCmd=50;
-        s_Cfg.InputSleTime=50;
-        s_Cfg.DetectSleTime=20;
+    case BALANCE_M:MaxStoredCmd=20;
+        InputSleepTime=DetectSleepTime=50;
         break;
-    case LOWCOST_M:
-        s_Cfg.MaxStoredCmd=100;
-        s_Cfg.InputSleTime=100;
-        s_Cfg.DetectSleTime=10;
+    case LOWCOST_M:MaxStoredCmd=10;
+        InputSleepTime=DetectSleepTime=100;
+        break;
+    default:MaxStoredCmd=10;
+        InputSleepTime=DetectSleepTime=30;
         break;
     }
+    s_Cfg.MaxStoredCmd=MaxStoredCmd;
+    s_Cfg.InputSleepTime=InputSleepTime;
+    s_Cfg.DetectSleepTime=DetectSleepTime;
+
     return;
 }
 
@@ -1169,7 +1242,7 @@ void ForgeHwnd::SetCmdOpt(string Cmd,OptFmtData OptFmt)
 
 int ForgeHwnd::MainLoop(string RunSign)
 {
-    CmdSurfaceData Data;
+    CmdExchangeData Data;
 
     s_RunSign=RunSign;
     Data.CursorPos=0;
@@ -1182,8 +1255,10 @@ int ForgeHwnd::MainLoop(string RunSign)
 
     this->Refresh(s_RunSign,"");
 
-    this->DetecKeyTask(&Data);
-
+    while (!Data.ExitFlag) {
+        this->DetecKeyTask(&Data);
+        this->InputCmdTask(&Data);
+    }
     this->TerminalReset();
 
     return 0;

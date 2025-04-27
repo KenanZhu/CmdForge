@@ -56,51 +56,50 @@ int main(int args,char *argv[])
     
     // SET YOUR CLI CONFIGURATION HERE
     ///////////////////////////////////////////////////////
-    CLICfg.InputSleTime=20;
-    CLICfg.DetectSleTime=20;      // Suggest set in '10-100'.
+    CLICfg.InputSleepTime=20;
+    CLICfg.DetectSleepTime=20;      // Suggest set in '10-100'.
     CLICfg.MaxStoredCmd=20;
-    CLICfg.ProgramName="Demo";
-    CLICfg.VerMode=VER_M_ALPA;
+    CLICfg.ProgramName="Demo Process";
     CLICfg.Version="1.0.0.0";
     CLIF.SetCLICfg(CLICfg);
     
     // SET YOUR MAIN COMMAND HERE
     ///////////////////////////////////////////////////////
-    CLIF.SetCLIMainCmd("test");
+    CLIF.SetCLIMainCmd("proc");
 
     // THESE ARE TESTS YOU CAN DEBUG TO KNOW MORE DETAIL
     ///////////////////////////////////////////////////////
     CLIF.HookCmdApi("-start",process_1);
-    CLIF.SetCmdBrief("-start","start main");
+    CLIF.SetCmdBrief("-start","start main process");
 
     CLIF.HookCmdApi("-do",process_2);
-    CLIF.SetCmdBrief("-do","do some thing");
+    CLIF.SetCmdBrief("-do","do process");
 
     CLIF.HookCmdApi("-stop",process_3);
-    CLIF.SetCmdBrief("-stop","stop some thing");
+    CLIF.SetCmdBrief("-stop","stop process");
 
     CLIF.HookCmdApi("-end",process_4);
-    CLIF.SetCmdBrief("-end","end main");
+    CLIF.SetCmdBrief("-end","end main process");
 
-    OptFmt.LongFmt="--along";
-    OptFmt.ShortFmt="-a";
-    OptFmt.Brief="option along/a";
+    OptFmt.LongFmt="--id";
+    OptFmt.ShortFmt="-i";
+    OptFmt.Brief="process id";
     OptFmt.Args.push_back(ArgFmt);
-    OptFmt.OptType=OPTYPE_D|OPTYPE_O;
+    OptFmt.OptType=OPTYPE_D|OPTYPE_M;
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--blong";
-    OptFmt.ShortFmt="-b";
-    OptFmt.Brief="option blong/b";
+    OptFmt.LongFmt="--task";
+    OptFmt.ShortFmt="-t";
+    OptFmt.Brief="process task";
     OptFmt.OptType=OPTYPE_M|OPTYPE_R;
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--clong";
-    OptFmt.ShortFmt="-c";
-    OptFmt.Brief="option blong/b";
-    OptFmt.OptType=OPTYPE_M;
+    OptFmt.LongFmt="--occupy";
+    OptFmt.ShortFmt="-o";
+    OptFmt.Brief="process occupy";
+    OptFmt.OptType=OPTYPE_O;
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
@@ -141,10 +140,10 @@ int main(int args,char *argv[])
     //
     
     // 1.
-    CLIF.HookCmdApi("-startit",process_1);
-    CLIF.HookCmdApi("-stopit",process_2);
-    CLIF.HookCmdApi("-doit",process_3);
-    CLIF.HookCmdApi("-endit",process_4);
+    CLIF.HookCmdApi("--startit",process_1);
+    CLIF.HookCmdApi("--stopit",process_2);
+    CLIF.HookCmdApi("--doit",process_3);
+    CLIF.HookCmdApi("--endit",process_4);
 
 #endif
     
