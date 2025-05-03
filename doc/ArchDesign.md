@@ -31,7 +31,7 @@
 ## 实例构建详细说明
 
 > [!NOTE]
-> 这里的示例代码采用方法接口适用的 CmdForge 构建库最低版本为 1.0.3。
+> 这里的示例代码采用方法接口适用的 CmdForge 构建库最低版本为 1.0.7。
 
 首先定义一些重要的概念：
 
@@ -143,7 +143,7 @@ void process_1(vector<vector<string>> OptArgs)
 {
 ////    详细的代码逻辑实现如下
 ///////////////////////////////////////////////////////////
-	cout<<"callback process_1 by command: '"+OptArgs[0][0]+"'."<<endl;
+	cout<<"SUCCESS !"<<endl;
 
 ///////////////////////////////////////////////////////////
 ////    在这里判断和转换 '[-opts]' 和 '[-args]'参数 
@@ -158,7 +158,7 @@ void process_1(vector<vector<string>> OptArgs)
 void process_2(vector<vector<string>> OptArgs)
 {
 ////    和上述同理
-	cout<<"callback process_2 by command: '"+OptArgs[0][0]+"'."<<endl;
+	cout<<"SUCCESS !"<<endl;
 ///////////////////////////////////////////////////////////
 	return;
 }
@@ -182,7 +182,8 @@ int main(int args,char *argv[])
 {
     // 初始化你的 'CmdForge'
     ///////////////////////////////////////////////////////
-    ForgeHwnd CLIF;               // CLI 主界面维持类。
+    ForgeHwnd CLIF(argc,argv);    // CLI 主界面维持类。
+                                  // (使用默认构造函数只支持交互模式)
     ArgFmtData ArgFmt={0};        // 选项参数格式数据。
     CLICfgData CLICfg={0};        // CLI 配置数据。.
     OptFmtData OptFmt={0};        // 选项格式数据。
@@ -192,12 +193,11 @@ int main(int args,char *argv[])
     CLICfg.InputSleTime=20;
     CLICfg.DetectSleTime=20;      // 建议设置在 '10-100' 范围内.
     CLICfg.MaxStoredCmd=20;
-    CLICfg.ProgramName="Demo";
-    CLICfg.VerMode=VER_M_ALPA;
+    CLICfg.ProgramName="Demo Process";
     CLICfg.Version="1.0.0.0";
     CLIF.SetCLICfg(CLICfg);
 
-    // 另外，由于新的接口引入，你可以通过如下方式设置你的 CLI 配置数据
+    // 另外，你可以通过如下方式设置你的 CLI 配置数据 (于1.0.3版本后支持)
     //
     // CLICfg.SetCLIMode(int Mode);
     //
@@ -209,37 +209,39 @@ int main(int args,char *argv[])
     
     // 将命令与包装函数进行连接
     ///////////////////////////////////////////////////////
+    CLIF.SetCLIMainCmd("proc");
+
     CLIF.HookCmdApi("-start",process_1);
-    CLIF.SetCmdBrief("-start","start main");
+    CLIF.SetCmdBrief("-start","start main process");
 
     CLIF.HookCmdApi("-do",process_2);
-    CLIF.SetCmdBrief("-do","do some thing");
+    CLIF.SetCmdBrief("-do","do process");
 
     CLIF.HookCmdApi("-stop",process_3);
-    CLIF.SetCmdBrief("-stop","stop some thing");
+    CLIF.SetCmdBrief("-stop","stop process");
 
     CLIF.HookCmdApi("-end",process_4);
-    CLIF.SetCmdBrief("-end","end main");
+    CLIF.SetCmdBrief("-end","end main process");
 
-    OptFmt.LongFmt="--along";
-    OptFmt.ShortFmt="-a";
-    OptFmt.Brief="option along/a";
+    OptFmt.LongFmt="--id";
+    OptFmt.ShortFmt="-i";
+    OptFmt.Brief="process id";
     OptFmt.Args.push_back(ArgFmt);
-    OptFmt.OptType=OPTYPE_D|OPTYPE_O;
+    OptFmt.OptType=OPTYPE_D|OPTYPE_M;
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--blong";
-    OptFmt.ShortFmt="-b";
-    OptFmt.Brief="option blong/b";
+    OptFmt.LongFmt="--task";
+    OptFmt.ShortFmt="-t";
+    OptFmt.Brief="process task";
     OptFmt.OptType=OPTYPE_M|OPTYPE_R;
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--clong";
-    OptFmt.ShortFmt="-c";
-    OptFmt.Brief="option blong/b";
-    OptFmt.OptType=OPTYPE_M;
+    OptFmt.LongFmt="--occupy";
+    OptFmt.ShortFmt="-o";
+    OptFmt.Brief="process occupy";
+    OptFmt.OptType=OPTYPE_O;
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
@@ -254,15 +256,24 @@ int main(int args,char *argv[])
     // 3.
     CLIF.HookCmdApi("-chk",nullptr);
 
+    // 4.
+    CLIF.HookCmdApi("-chk","-do");
+    CLIF.HookCmdApi("-do","-do");
+    CLIF.HookCmdApi("-do","-stop");
+
 #endif
 
 #ifdef _TEST1
     
     // 1.
-    CLIF.HookCmdApi("-startit",process_1);
-    CLIF.HookCmdApi("-stopit",process_2);
-    CLIF.HookCmdApi("-doit",process_3);
-    CLIF.HookCmdApi("-endit",process_4);
+    CLIF.HookCmdApi("--startit",process_1);
+    CLIF.HookCmdApi("--doit",process_2);
+    CLIF.HookCmdApi("--stopit",process_3);
+    CLIF.HookCmdApi("--endit",process_4);
+
+    // 2.
+    CLIF.HookCmdApi("-do","-dothis");
+    CLIF.HookCmdApi("-stop","-stopthis");
 
 #endif
     
@@ -279,11 +290,11 @@ int main(int args,char *argv[])
 ```bash
 {$ MainCmd} {$ -SubCmd}
 
-test -start
+proc -start
 
 {$ MainCmd} {$ -SubCmd} [{$ -Opt} [{$ -Args}](s)](s)
 
-test -do -a run -b swim -c read
+proc -do -i 01 -t swap -o 12bit
 ```
 
 第一种格式，只包含主命令和子命令，没有选项和参数。\
@@ -309,15 +320,20 @@ maincmd -subcmd -opt1 arg1 arg2 -opt2 arg1 arg2 -opt3 arg1 arg2
 1.  同一个命令 Hook 到不同的包装函数。
 2.  重复的 Hook 操作。
 3.  Hook 指向为空的包装函数。
+4.  由于 1.0.7 引入的新的 Hook 方法，产生了以下新的情况：
+    a.  Hook 新命令到不存在的目标命令。
+    b.  Hook 的新命令与目标命令相同（ c. 的特殊情况）。
+    c.  Hook 已经存在的命令作为新命令。
 
 在测试模块 **_TEST1** 中，我们给出了一个命令 Hook 其它用法的示例：
 
 1.  不同的命令可以 Hook 到同一个包装函数。
+2.  直接使用 Hook 为已存在命令添加新命令。
 
-这意味着你可以为同一个包装函数提供两种不同的子命令来调用它。如下示意：
+这意味着你可以为同一个包装函数提供两种及以上不同的子命令来调用它。如下示意：
 
 ```bash
-test -do ... == test -doit...
+proc -do ... == proc -doit... == proc -dothis...
 ```
 
 ## 自行构建说明

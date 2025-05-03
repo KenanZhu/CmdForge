@@ -2,16 +2,16 @@
 
 English | [简体中文](README.md)
 
-<p align="center">
-  <img src="./doc/res/logo/CmdForge_Light.png" width="45%" alt="Light Logo">
-  <img src="./doc/res/logo/CmdForge_Dark.png" width="45%" alt="Dark Logo">
-</p>
+<div align="center">
+  <img src="./doc/res/logo/CmdForge_Light.png" style="max-width:45%;min-width:300px;display:inline-block">
+  <img src="./doc/res/logo/CmdForge_Dark.png" style="max-width:45%;min-width:300px;display:inline-block">
+</div>
 
-<p align="center">
+<div align="center">
   <img src="https://img.shields.io/github/stars/KenanZhu/CmdForge.svg" alt="Stars">
   <img src="https://img.shields.io/github/issues/KenanZhu/CmdForge.svg" alt="Issues">
   <img src="https://img.shields.io/github/license/KenanZhu/CmdForge.svg" alt="License">
-</p>
+</div>
 
 A command-line interface (CLI) construction framework that helps you rapidly develop cross-platform command-line tools.
 
@@ -37,9 +37,9 @@ The `doc/` directory contains detailed development documentation explaining syst
 ## Example Build
 
 The `src/` directory includes:
-- **CmdForge** library code in `lib`
-- Changelog directory `log`
-- Complete examples: `Demo.cpp` and `API.h`
+- `lib`: **CmdForge** library source code.
+- `log`: Changelog directory.
+- `Demo.cpp`+`API.h`: Complete examples.
   
 These examples demonstrate **CmdForge**'s construction methods and runtime behavior.
 
@@ -51,7 +51,7 @@ These examples demonstrate **CmdForge**'s construction methods and runtime behav
 ```bash
 # Clone repository
 git clone https://github.com/KenanZhu/CmdForge.git
-cd CmdForge
+cd CmdForge/src
 
 # Create build directory
 mkdir build
@@ -67,14 +67,11 @@ cmake --build .
 ### Platform Builds
 
 ### Windows
-- **Recommended Environment**: Visual Studio 2022 + CMake integration
+- **Tested Environment**:
+  - Windows 11 (x86_64) with Visual Studio 2022
 - **Note**: Native CMD may not handle ANSI escape codes properly. Recommended terminals:
   - [Windows Terminal](https://aka.ms/terminal)
   - [MSYS2](https://www.msys2.org/) terminal
-- **CMake Configuration Example**:
-```bat
-cmake -G "Visual Studio 14 2022" -A x64 ..
-```
 
 ### Linux
 - **Tested Environment**:
@@ -101,7 +98,7 @@ Complete development documents in `doc/` directory:
 | Document | Description |
 |:-:|:-:|
 |[Architecture Design Document](./doc/ArchDesign.md)|Framework module structure & demo details|
-|[API Reference](./doc/APIGuide.md)|Core classes & methods documentation|
+|[API Reference](./doc/APIGuide.md)|Classes & Core methods documentation|
 
 ## Issue Reporting
 
@@ -117,7 +114,7 @@ Licensed under [GNU GPLv3](LICENSE). Free to use and modify with original copyri
 
 ## Contact
 
-- **Maintainer**: KenanZhu (Nanoki)
+- **Maintainer**: [KenanZhu (Nanoki)](https://github.com/KenanZhu)
 - **Email**: <nanoki_zh@163.com>
 - **Discussion**: Submit Issues or Pull Requests
 
