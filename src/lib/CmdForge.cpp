@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.6
+//  VERSION OF LIB    : 1.0.7
 // ----------------------------------------------------------------------------
 
 #include "CmdForge.h"
@@ -241,7 +241,7 @@ bool ApiCan::BasicCheck(void)
     Cmds=(int)s_Cmds.size();
 
     if (s_API==nullptr) {
-        this->StdMsg("no api was set in a api can",3);
+        this->StdMsg("no api was hooked in a api can",3);
         return State=false;
     }
     else if (s_Cmds.size()==0) {
@@ -724,6 +724,25 @@ bool FBuilder::CheckHooks(void)
     return State;
 }
 
+void FBuilder::HookApi(string ExistCmd,string NewCmd)
+{
+    int Index;
+
+    Index=this->CmdIndex(ExistCmd);
+    if (Index==-1) {
+        this->StdMsg("[-cmd] '"+ExistCmd+"' is not exist, you can't hook new command.",2);
+        return;
+    }
+    if (this->ExistCmd(NewCmd)) {
+        this->StdMsg("[-cmd] '"+NewCmd+"' already exist, you can't hook as new command.",2);
+        return;
+    }
+    Index=s_CmdApiTable[Index];
+    this->AppendCmd(NewCmd);
+    s_ApiCanPool[Index].AppendCmd(NewCmd);
+    s_CmdApiTable.push_back(Index);
+}
+
 void FBuilder::HookApi(string Cmd,void (*API)(vector<vector<string>>))
 {
     int Index;
@@ -759,9 +778,20 @@ void FBuilder::HookApi(string Cmd,void (*API)(vector<vector<string>>))
 
 ///    PROTECTED :
 /////////////////////////////////////////////////
+void FParser::APIhelp(vector<string> OptsArgs)
+{
+}
+void FParser::APIversion(vector<string> OptsArgs)
+{
+}
+void FParser::APIsystem(vector<string> OptsArgs)
+{
+}
+void FParser::APIexit(vector<string> OptsArgs)
+{
+}
 void FParser::ForkReserved(int Index)
 {
-    return;
 }
 ///    PRIVATE :
 /////////////////////////////////////////////////
@@ -772,7 +802,7 @@ void FParser::ForkReserved(int Index)
 
 ///    PUBLIC :
 /////////////////////////////////////////////////
-void FParser::CmdParser(string CmdIn)
+void FParser::ParserCmd(string CmdIn)
 {
     int Index;
 
@@ -797,18 +827,11 @@ void FParser::CmdParser(string CmdIn)
         this->StdMsg("invaild command, unknow [-cmd] '"+s_CmdOptsArgs[1]+"'",0);
     }
     else if (Index<s_ResCmdNum) {           // REJECT: reserved command.
-        this->ForkReserved(Index);
+        this->ForkReserved(s_CmdApiTable[Index]);
     }
     else {
         this->ForkApi(s_CmdOptsArgs[1]);
     }
-    return;
-}
-
-void FParser::SendOSCmd(string Cmd)
-{
-    system(Cmd.data());
-
     return;
 }
 
@@ -825,33 +848,28 @@ void FParser::ForkApi(string Cmd)
 /////////////////////////////////////////////////////////////////////
 ///    CLASS : ForgeHwnd
 /////////////////////////////////////////////////////////////////////
-ForgeHwnd::ForgeHwnd()
+ForgeHwnd::ForgeHwnd(void)
 {
-    s_CurCmdPos=0;
-    s_HistoryCmd.clear();
-
-    // Init of config
-    s_Cfg.Version.clear();
-    s_Cfg.ProgramName.clear();
-    s_Cfg.MaxStoredCmd=10;
-    s_Cfg.InputSleepTime=30;
-    s_Cfg.DetectSleepTime=30;
-
-    // This is the reserved command:
-    // Lacking hook of api callback,you can add but do not remove them.
-    this->HookApi("-help",nullptr);
-    this->HookApi("-sys" ,nullptr);
-    this->HookApi("-ver" ,nullptr);
-    this->HookApi("-quit",nullptr);
-
-    this->SetCmdBrief("-help","get help infomation");
-    this->SetCmdBrief("-sys" ,"system interface"   );
-    this->SetCmdBrief("-ver" ,"get version message");
-    this->SetCmdBrief("-quit","quit the program"   );
-
-    s_ResCmdNum=(int)s_CmdIndex.size();
+    this->Init();
+ 
+    s_CLIMode=INTRACT_M;
 }
-ForgeHwnd::~ForgeHwnd()
+ForgeHwnd::ForgeHwnd(int argc,char *argv[])
+{
+    int i;
+    string TempInput;
+
+    this->Init();
+    
+    for (i=1;i<argc;i++) TempInput+=S+argv[i];
+    if (!TempInput.empty()) {
+        TempInput+='\n';
+        s_HistoryCmd.push_back(TempInput);
+    } else {
+       s_CLIMode=INTRACT_M;
+    }
+}
+ForgeHwnd::~ForgeHwnd(void)
 {
 }
 ///    PROTECTED :
@@ -925,6 +943,8 @@ void ForgeHwnd::InputCmdTask(CmdExchangeData *Data)
 {
     size_t p;
 
+    if (Data->ExitFlag) return;
+
     p=Data->CurInput.find('\n');
     if (p!=string::npos) {
         s_CmdIn.clear();
@@ -934,8 +954,7 @@ void ForgeHwnd::InputCmdTask(CmdExchangeData *Data)
     }
     if (!s_CmdIn.empty()) {
         this->StoreCmd(s_CmdIn);
-        this->CmdParser(s_CmdIn);
-        this->Cout(s_RunSign,0);
+        this->ParserCmd(s_CmdIn);
         s_CurCmdPos=(int)s_HistoryCmd.size();
     }
 #ifdef _WIN32
@@ -951,7 +970,7 @@ void ForgeHwnd::DetecKeyTask(CmdExchangeData *Data)
     int KeyVal;
 
     KeyVal=0;
-    while (!Data->ExitFlag) {
+    while (true) {
         if (!_kbhit()) {
 #ifdef _WIN32
             Sleep(s_Cfg.DetectSleepTime);
@@ -1041,8 +1060,9 @@ void ForgeHwnd::DetecKeyTask(CmdExchangeData *Data)
                 Data->CurInput+='\n';
                 return;
             case 0x1b: // Esc
+                this->Cout("\n");
                 Data->ExitFlag=true;
-                break;
+                return;
             default:   // Character
                 if (KeyVal<32||KeyVal>126) continue;
                 Data->CurInput.insert(Data->CursorPos,1,KeyVal);
@@ -1051,31 +1071,57 @@ void ForgeHwnd::DetecKeyTask(CmdExchangeData *Data)
             }
         }
         // Update console
-        this->Refresh(s_RunSign, Data->CurInput);
-        this->CurMove((int)(s_RunSign.size()) + Data->CursorPos);
+        this->Refresh(s_RunSign,Data->CurInput);
+        this->CurMove((int)(s_RunSign.size())+Data->CursorPos);
     }
     return;
+}
+
+void ForgeHwnd::APIhelp(vector<string> OptsArgs)
+{
+    this->GenHelpInfo();
+}
+
+void ForgeHwnd::APIversion(vector<string> OptsArgs)
+{
+    this->GenVersionInfo();
+}
+
+void ForgeHwnd::APIsystem(vector<string> OptsArgs)
+{
+    int i;
+    string TempCmd;
+
+    if (OptsArgs.size()<3) return;
+    for (i=2;i<(int)OptsArgs.size();i++) {
+        TempCmd+=OptsArgs[i]+S;
+    }
+    system(TempCmd.data());
+}
+
+void ForgeHwnd::APIexit(vector<string> OptsArgs)
+{
+    exit(0);
 }
 
 void ForgeHwnd::ForkReserved(int Index)
 {
     // Reserved command:
-    // -help : generate help message of all api.
-    // -sys  : reserved system interface.
-    // -ver  : generate version information of this program.
-    // -quit : quit this program.
+    // --help    : generate help message of all api.
+    // --system  : reserved system interface.
+    // --version : generate version information of this program.
+    // --exit    : exit this program.
     //
     // YOU CAN ADD YOUR OWN RESERVED COMMAND HERE.
     switch (Index) {
-    case 0: // -help
-        this->GenHelpInfo(); break;
-    case 1: // -sys
-        if (s_CmdOptsArgs.size()<3) return;
-        this->SendOSCmd(s_CmdOptsArgs[2]); break;
-    case 2: // -ver
-        this->GenVersionInfo(); break;
-    case 3: // -quit
-        exit(0); break;
+    case 0: // -h/--help
+        this->APIhelp(s_CmdOptsArgs); break;
+    case 1: // -v/--version
+        this->APIversion(s_CmdOptsArgs); break;
+    case 2: // -sys/--system
+        this->APIsystem(s_CmdOptsArgs); break;
+    case 3: // -ext/--exit
+        this->APIexit(s_CmdOptsArgs); break;
     default:
         break;
     }
@@ -1083,6 +1129,39 @@ void ForgeHwnd::ForkReserved(int Index)
 }
 ///    PRIVATE :
 /////////////////////////////////////////////////
+void ForgeHwnd::Init(void)
+{
+    // Init
+    s_CLIMode=ONELINE_M;
+    s_CurCmdPos=0;
+    s_HistoryCmd.clear();
+
+    // Init of config
+    s_Cfg.Version.clear();
+    s_Cfg.ProgramName.clear();
+    s_Cfg.MaxStoredCmd=10;
+    s_Cfg.InputSleepTime=30;
+    s_Cfg.DetectSleepTime=30;
+
+    // These is the reserved command:
+    this->HookApi("-h",nullptr);
+    this->HookApi("-h","--help");
+    this->HookApi("-v",nullptr);
+    this->HookApi("-v","--version");
+    this->HookApi("-sys",nullptr);
+    this->HookApi("-sys","--system");
+    this->HookApi("-ext",nullptr);
+    this->HookApi("-ext","--exit");
+
+    this->SetCmdBrief("-h","get help infomation");
+    this->SetCmdBrief("-v","get version message");
+    this->SetCmdBrief("-sys","system interface");
+    this->SetCmdBrief("-ext","quit the program");
+
+    s_ResCmdNum=(int)s_CmdIndex.size();
+    s_ResApiNum=(int)s_ApiCanPool.size();
+}
+
 bool ForgeHwnd::Check(void)
 {
     bool State;
@@ -1092,7 +1171,7 @@ bool ForgeHwnd::Check(void)
     Apis=(int)s_ApiCanPool.size();
     if (!this->CheckHooks()) State=false;
 
-    for (i=s_ResCmdNum;i<Apis;i++) {
+    for (i=s_ResApiNum;i<Apis;i++) {
         if (!s_ApiCanPool[i].Check()) State=false;
     }
     return State;
@@ -1205,7 +1284,14 @@ void ForgeHwnd::SetCLIMainCmd(string MainCmd)
     return;
 }
 
-void ForgeHwnd::HookCmdApi(string Cmd,void (*API)(vector<vector<string>>))
+void ForgeHwnd::HookCmdApi(string ExistCmd, string NewCmd)
+{
+    this->HookApi(ExistCmd,NewCmd);
+
+    return;
+}
+
+void ForgeHwnd::HookCmdApi(string Cmd, void (*API)(vector<vector<string>>))
 {
     this->HookApi(Cmd,API);
 
@@ -1242,22 +1328,28 @@ void ForgeHwnd::SetCmdOpt(string Cmd,OptFmtData OptFmt)
 
 int ForgeHwnd::MainLoop(string RunSign)
 {
+    bool isIntract;
     CmdExchangeData Data;
 
+    isIntract=(s_CLIMode==INTRACT_M);
+
     s_RunSign=RunSign;
-    Data.CursorPos=0;
     Data.ExitFlag=false;
     Data.CurInput.clear();
+    Data.CurInput=isIntract?"":s_MainCmd+s_HistoryCmd[0];
+    Data.CursorPos=isIntract?0:(int)Data.CurInput.length();
 
     if (!this->Check()) return 0;
 
     this->TerminalSet();
-
-    this->Refresh(s_RunSign,"");
-
-    while (!Data.ExitFlag) {
-        this->DetecKeyTask(&Data);
+    if (!isIntract) {             // Mode : command oneline.
         this->InputCmdTask(&Data);
+    } else {                      // Mode : command interact.
+        while (!Data.ExitFlag) {
+            this->Refresh(s_RunSign,"");
+            this->DetecKeyTask(&Data);
+            this->InputCmdTask(&Data);
+        }
     }
     this->TerminalReset();
 

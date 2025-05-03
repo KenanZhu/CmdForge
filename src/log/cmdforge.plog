@@ -1,6 +1,17 @@
+[2025-05-03]
+Fixes:
+    - Fix some mistakes in the demo.
+
+Added:
+    + Support command mode : one line and interact.
+    + Add new method in ForgeHwnd: HookCmdApi(), you can hook new command directly by exist command.
+
+Other:
+    # Update the APIGuide.md and ArchDesign.md file.
+
 [2025-04-26]
 Fixes:
-    - Fix known system errors.
+    - Fix some known errors.
 
 Other:
     # Refactor standardize class access modifiers (private/public/protected) for unified access control; 
@@ -40,7 +51,7 @@ Other:
 
 [2025-03-05]
 Added:
-    +Support parser the options all are (O)type and default option input.
+    + Support parser the options all are (O)type and default option input.
 
 Other:
     # Add more usage example in demo;

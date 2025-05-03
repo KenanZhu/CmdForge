@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.6
+//  VERSION OF LIB    : 1.0.7
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -30,6 +30,7 @@
 #include <vector>
 #include <sstream>
 #include <iostream>
+#include <functional>
 #include <unordered_set>
 
 #ifdef _WIN32
@@ -44,7 +45,7 @@
 //////////////////// _DEFINE_
 
                                   // Version of 'CmdForge'.
-#define FORGE_VER       std::string("1.0.6")
+#define FORGE_VER       std::string("1.0.7")
 
                                   // Default run sign.
 #define DEFT_RSIGN      std::string("> CmdForge [" + FORGE_VER + "] :")
@@ -54,6 +55,9 @@
 #define DS              S+S       // Double spaces.
 #define TS              S+DS      // Triple spaces.
 #define QS              S+TS      // ​​Quadruple spaces.
+
+#define ONELINE_M       0         // CLI Mode: one-line mode.
+#define INTRACT_M       1         // CLI Mode: interact mode.
 
 #define DEFAULT_M       0         // Run Mode: default mode.
 #define HIGHPFM_M       1         // Run Mode: high performance mode.
@@ -205,6 +209,7 @@ public:
     virtual ~FData(void);
 protected:
     int s_ResCmdNum;              // Number of reserved command.
+    int s_ResApiNum;              // Number of reserved api can.
     string s_CmdIn;               // Command inputed by user.
     string s_RunSign;             // Runing sign of CmdForge.
     string s_MainCmd;             // Main command.
@@ -243,14 +248,14 @@ public:
 protected:
 ///
 /// NONE FOR THIS CLASS
-///  
+///
 private:
 ///
 /// NONE FOR THIS CLASS
 ///
 public:
     bool CheckHooks(void);
-
+    void HookApi(string ExistCmd,string NewCmd);
     void HookApi(string Cmd,void (*API)(vector<vector<string>>));
 };
 
@@ -265,16 +270,17 @@ public:
     FParser()=default;
     virtual ~FParser()=default;
 protected:
+    virtual void APIhelp   (vector<string> OptsArgs);
+    virtual void APIversion(vector<string> OptsArgs);
+    virtual void APIsystem (vector<string> OptsArgs);
+    virtual void APIexit   (vector<string> OptsArgs);
     virtual void ForkReserved(int Index);
 private:
 ///
 /// NONE FOR THIS CLASS
 ///
 public:
-    void CmdParser(string CmdIn);
-
-    void SendOSCmd(string Cmd);
-
+    void ParserCmd(string CmdIn);
     void ForkApi(string Cmd);
 };
 
@@ -287,10 +293,12 @@ class ForgeHwnd:private FParser,private FBuilder
 {
 public:
     ForgeHwnd(void);
+    ForgeHwnd(int argc,char *argv[]);
     ~ForgeHwnd(void);
 protected:
-    CLICfgData s_Cfg;             // CLI configuration data.
+    int s_CLIMode;                // Mode of CLI (0:One-Line,1:Interact).
     int s_CurCmdPos;              // Current position of history commands.
+    CLICfgData s_Cfg;             // CLI configuration data.
     deque<string> s_HistoryCmd;   // History command stored.
 #ifdef  _WIN32
     DWORD s_Original;             // Original setting of windows terminal.
@@ -304,9 +312,14 @@ protected:
 
     void InputCmdTask(CmdExchangeData *Data);
     void DetecKeyTask(CmdExchangeData *Data);
-    
+
+    void APIhelp   (vector<string> OptsArgs) override;
+    void APIversion(vector<string> OptsArgs) override;
+    void APIsystem (vector<string> OptsArgs) override;
+    void APIexit   (vector<string> OptsArgs) override;
     void ForkReserved(int Index) override;
 private:
+    void Init(void);
     bool Check(void);
 
     void StoreCmd(string CurCmd);
@@ -321,6 +334,7 @@ public:
     void SetCLIVersion(string Version);
     void SetCLIMainCmd(string MainCmd);
 
+    void HookCmdApi(string ExistCmd,string NewCmd);
     void HookCmdApi(string Cmd,void (*API)(vector<vector<string>>));
 
     void SetCmdBrief(string Cmd,string Brief);
