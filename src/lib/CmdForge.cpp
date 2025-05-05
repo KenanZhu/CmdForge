@@ -622,8 +622,14 @@ void FData::SetCmdIn(const string &CmdIn)
 {
     vector<string> TempOptArgs;
 
+    if (CmdIn.empty()) return;
+
     s_CmdIn=CmdIn;
     TempOptArgs=this->SplitCmd(s_CmdIn);
+    if (TempOptArgs.empty()) {
+        s_CmdIn.clear();
+        s_CmdOptsArgs.clear();
+    }
     this->SetCmdOptsArgs(TempOptArgs);
 
     return;
@@ -774,7 +780,7 @@ bool FData::CompareStrAlpha(const string &Str1,const string &Str2)
     }
 }
 
-void FData::SortStrList(vector<string>& SourceStrList)
+void FData::SortStrList(vector<string> &SourceStrList)
 {
     sort(SourceStrList.begin(),SourceStrList.end(),&FData::CompareStrAlpha);
 }
@@ -1024,12 +1030,12 @@ void ForgeHwnd::ResetTerminal(void)
 void ForgeHwnd::Complete(string &SourceStr, vector<string> &TargetStrList)
 {
     int Index;
-    string FilteredSourceStr;
-    string FilteredTargetStr;
-    vector<string> MatchedTargetStrList;
+    string FiltSrcStr;
+    string FiltTgtStr;
+    vector<string> MatchTgtStrList;
 
     // Filter out non-alphabetic characters from SourceStr.
-    auto FilterAlpha=[](const string &Str)
+    auto AlphaFilter=[](const string &Str)
     {
         string Res;
 
@@ -1038,28 +1044,28 @@ void ForgeHwnd::Complete(string &SourceStr, vector<string> &TargetStrList)
         }
         return Res;
     };
-    FilteredSourceStr=FilterAlpha(SourceStr);
-    if (FilteredSourceStr.empty()) return;
+    FiltSrcStr=AlphaFilter(SourceStr);
+    if (FiltSrcStr.empty()) return;
 
     // Find all the string in TargetStrList that partly or totally
     // match with the filtered SourceStr.
     Index=0;
     for (string &TargetStr:TargetStrList) {
         Index++;
-        FilteredTargetStr=FilterAlpha(TargetStr);
-        if (FilteredTargetStr.compare(0,FilteredSourceStr.size(),FilteredSourceStr)==0||
-            FilteredSourceStr.compare(0,FilteredTargetStr.size(),FilteredTargetStr)==0) {
-            if (FilteredSourceStr==FilteredTargetStr) {
-                MatchedTargetStrList.clear();
-                MatchedTargetStrList.push_back(TargetStr);
+        FiltTgtStr=AlphaFilter(TargetStr);
+        if (FiltTgtStr.compare(0,FiltSrcStr.size(),FiltSrcStr)==0||
+            FiltSrcStr.compare(0,FiltTgtStr.size(),FiltTgtStr)==0) {
+            if (FiltSrcStr==FiltTgtStr) {
+                MatchTgtStrList.clear();
+                MatchTgtStrList.push_back(TargetStr);
                 break;
             }
-            MatchedTargetStrList.push_back(TargetStr);
+            MatchTgtStrList.push_back(TargetStr);
         }
     }
-    if (MatchedTargetStrList.empty()) return;
+    if (MatchTgtStrList.empty()) return;
 
-    if ((int)MatchedTargetStrList.size()==1&&MatchedTargetStrList[0]==SourceStr) {
+    if ((int)MatchTgtStrList.size()==1&&MatchTgtStrList[0]==SourceStr) {
         if (Index<(int)TargetStrList.size()) {
             SourceStr=TargetStrList[Index];
         } else {
@@ -1067,7 +1073,7 @@ void ForgeHwnd::Complete(string &SourceStr, vector<string> &TargetStrList)
         }
         return;
     }
-    SourceStr=MatchedTargetStrList[0];
+    SourceStr=MatchTgtStrList[0];
 
     return;
 }
@@ -1102,9 +1108,7 @@ void ForgeHwnd::AutoCompleteCmd(string &CurCmd)
     vector<string> TempCmds;
     
     Cmds=(int)s_CmdIndex.size();
-
-    TempCmd=CurCmd;
-    TempCmds=this->SplitCmd(TempCmd);
+    TempCmds=this->SplitCmd(CurCmd);
 
     // COMP : no input, complete the main command.
     if (TempCmds.empty()) {
@@ -1122,8 +1126,8 @@ void ForgeHwnd::AutoCompleteCmd(string &CurCmd)
     else {
         this->CompleteOpt(TempCmds[1],TempCmds.back());
     }
-    TempCmd=TempCmds[0];
-    for (i=1;i<(int)TempCmds.size();i++) TempCmd+=S+TempCmds[i];
+    TempCmd.clear();
+    for (i=0;i<(int)TempCmds.size();i++) TempCmd+=TempCmds[i]+S;
     CurCmd=TempCmd;
 
     return;
