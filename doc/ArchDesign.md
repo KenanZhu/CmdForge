@@ -31,7 +31,7 @@
 ## 实例构建详细说明
 
 > [!NOTE]
-> 这里的示例代码采用方法接口适用的 CmdForge 构建库最低版本为 1.0.7。
+> 这里的示例代码采用方法接口适用的 CmdForge 构建库最低版本为 1.0.9。
 
 首先定义一些重要的概念：
 
@@ -79,7 +79,7 @@
     
 接受一个二维的 *std::string* 向量容器作为唯一的参数，且返回值为 *void* 的函数。其中该二维向量容器的结构如下图所示：
 
-```
+``` plaintext
 std::vector<std::vector<std::string>> OptArgs;
 
 __|___0___|___1___|___2___|___3___|...
@@ -101,8 +101,9 @@ __|___0___|___1___|___2___|___3___|...
 
 通过给定的命令，将该命令传入包装函数进行调用的过程。
 
-正如上文提到，**CmdForge** 的构建方法是基于类方法的。也就是说，你只需要实例化一个命令行界面维持类即可完成交互界面的搭建。不过，除此之外，还有一些其它的准备工作。
+---
 
+正如上文提到，**CmdForge** 的构建方法是基于类方法的。也就是说，你只需要实例化一个命令行界面维持类即可完成交互界面的搭建。不过，除此之外，还有一些其它的准备工作。
 这里我们引入 **包装函数** 的概念。该包装函数需要你自己创建一个包装函数头文件。在 demo 实例中创建了头文件 **API.h** 。其中包装函数主要参数和构造类型如下所示：
 
 ```cpp
@@ -120,7 +121,7 @@ void PackageFunc(std::vector<std::vector<string>>)
 
 该函数接受一个二维的 *std::string* 向量容器参数，里面包含了经由 **FParser** 分析处理后的命令选项和参数数据。返回类型为 *void*。
 
-在 **API.h** 的具体实例中包含了两个包装函数如下：
+在 **API.h** 的具体实例中包含的包装函数如下：
 
 ```cpp
 //  \FILE  : APIs.h
@@ -162,11 +163,14 @@ void process_2(vector<vector<string>> OptArgs)
 ///////////////////////////////////////////////////////////
 	return;
 }
+
+......
+
 ```
 
 这里生明并定义了两个包装函数：*process_1*  和  *process_2* ,具体说明参见代码中注释。
 
-接下来是主体界面的构建方式，在主函数中我们首先需要包含 **CmdForge** 库的头文件 **CmdForge.h** 和包装函数的头文件(在demo实例中我们指 **API.h** ）。首先需要创建一个 **ForgeHwnd** 类的实例，根据需要可以创建CLI配置数据结构体；命令选项格式数据；命令选项参数格式数据。接下来同样以demo实例中的 **Demo.cpp** 文件进行详细的说明和介绍。
+接下来是主体界面的构建方式，在主函数中我们首先需要包含 **CmdForge** 库的头文件 **CmdForge.h** 和包装函数的头文件（在demo实例中我们指 **API.h** ）。首先需要创建一个 **ForgeHwnd** 类的实例，根据需要可以创建CLI配置数据结构体；命令选项格式数据；命令选项参数格式数据。接下来同样以demo实例中的 **Demo.cpp** 文件进行详细的说明和介绍。
 
 下面是**Demo.cpp**文件的详细内容：
 
@@ -193,7 +197,7 @@ int main(int args,char *argv[])
     CLICfg.InputSleTime=20;
     CLICfg.DetectSleTime=20;      // 建议设置在 '10-100' 范围内.
     CLICfg.MaxStoredCmd=20;
-    CLICfg.ProgramName="Demo Process";
+    CLICfg.ProgramName="CmdForge Demo";
     CLICfg.Version="1.0.0.0";
     CLIF.SetCLICfg(CLICfg);
 
@@ -203,45 +207,35 @@ int main(int args,char *argv[])
     //
     // CLICfg.SetCLIVersion(std::string Version);
     
-    // 设置你的主命令
-    ///////////////////////////////////////////////////////
-    CLIF.SetCLIMainCmd("test");
-    
-    // 将命令与包装函数进行连接
+    // 设置你的主命令和子命令
     ///////////////////////////////////////////////////////
     CLIF.SetCLIMainCmd("proc");
 
     CLIF.HookCmdApi("-start",process_1);
-    CLIF.SetCmdBrief("-start","start main process");
+    CLIF.SetCmdBrief("-start","start main process of this demo, it accept no arguments.");
 
     CLIF.HookCmdApi("-do",process_2);
-    CLIF.SetCmdBrief("-do","do process");
+    CLIF.SetCmdBrief("-do","this will create a new process task to do something, accept what please see '[main] -do -h/-help'.");
 
     CLIF.HookCmdApi("-stop",process_3);
-    CLIF.SetCmdBrief("-stop","stop process");
+    CLIF.SetCmdBrief("-stop","this will stop a exist process, accept what same as command '-do'.");
 
     CLIF.HookCmdApi("-end",process_4);
-    CLIF.SetCmdBrief("-end","end main process");
+    CLIF.SetCmdBrief("-end","end process of this demo, it accept no arguments.");
 
-    OptFmt.LongFmt="--id";
-    OptFmt.ShortFmt="-i";
-    OptFmt.Brief="process id";
-    OptFmt.Args.push_back(ArgFmt);
-    OptFmt.OptType=OPTYPE_D|OPTYPE_M;
+    //
+    // 这里我们使用新方法来生成选项数据。
+    //（1.0.9 版本引入的新方法，建议使用此方法）
+    //
+    OptFmt=CLIF.GenOptFmt("--id","-i","process id",{ArgFmt},OPTYPE_D|OPTYPE_O);
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--task";
-    OptFmt.ShortFmt="-t";
-    OptFmt.Brief="process task";
-    OptFmt.OptType=OPTYPE_M|OPTYPE_R;
+    OptFmt=CLIF.GenOptFmt("--task","-t","assigin task to current process.",{ArgFmt},OPTYPE_M|OPTYPE_R);
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--occupy";
-    OptFmt.ShortFmt="-o";
-    OptFmt.Brief="process occupy";
-    OptFmt.OptType=OPTYPE_O;
+    OptFmt=CLIF.GenOptFmt("--occupy","-o","resource occupy by process.",{ArgFmt},OPTYPE_O);
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
@@ -266,14 +260,17 @@ int main(int args,char *argv[])
 #ifdef _TEST1
     
     // 1.
-    CLIF.HookCmdApi("--startit",process_1);
-    CLIF.HookCmdApi("--doit",process_2);
-    CLIF.HookCmdApi("--stopit",process_3);
-    CLIF.HookCmdApi("--endit",process_4);
+    CLIF.HookCmdApi("--start-it",process_1);
+    CLIF.HookCmdApi("--do-it",process_2);
+    CLIF.HookCmdApi("--stop-it",process_3);
+    CLIF.HookCmdApi("--end-it",process_4);
 
     // 2.
-    CLIF.HookCmdApi("-do","-dothis");
-    CLIF.HookCmdApi("-stop","-stopthis");
+    CLIF.HookCmdApi("-do","--do-this");
+    CLIF.HookCmdApi("-stop","--stop-this");
+
+    // 3.
+    CLIF.HookCmdApi("-find","find the process by id or others, return the detail message of process.",{OptFmt},process_5);
 
 #endif
     
@@ -311,10 +308,9 @@ maincmd -subcmd arg1 arg2 -opt2 arg1 arg2 -opt3 arg1 arg2
 maincmd -subcmd -opt1 arg1 arg2 -opt2 arg1 arg2 -opt3 arg1 arg2
 ```
 
-在示例中，选项“-a/--along”的选项属性设置为默认可选项，“-b/--blong”的选项属性设置为必选可重复，“-c/--clong”的选项属性设置为必选。
+在示例中，选项“-i/--id”的选项属性设置为默认可选项，“-t/--task”的选项属性设置为必选可重复，“-o/--occupy”的选项属性设置为必选。
 
 此外，在该示例中，我们提供了两个测试模块，分别为 **_TEST0** 和 **_TEST1**。你可以在项目中添加对应的预编译宏选择测试模块。
-
 在测试模块 **_TEST0** 中，我们举出了三种会引起CmdForge输出警告信息并终止运行的情况：
 
 1.  同一个命令 Hook 到不同的包装函数。
@@ -329,11 +325,12 @@ maincmd -subcmd -opt1 arg1 arg2 -opt2 arg1 arg2 -opt3 arg1 arg2
 
 1.  不同的命令可以 Hook 到同一个包装函数。
 2.  直接使用 Hook 为已存在命令添加新命令。
+3.  一次性将命令 Hook 到包装函数，设置简介，并设置选项。这与你分别调用函数的效果是等价的，使用哪个方法取决于你。
 
-这意味着你可以为同一个包装函数提供两种及以上不同的子命令来调用它。如下示意：
+实例 1. 2. 意味着你可以为同一个包装函数提供两种及以上不同的子命令来调用它。如下示意：
 
 ```bash
-proc -do ... == proc -doit... == proc -dothis...
+proc -do ... == proc --do-it... == proc --do-this...
 ```
 
 ## 自行构建说明

@@ -19,7 +19,7 @@ void process_1(vector<vector<string>> OptArgs)
 {
 ////    SPECIFIC YOUR LOGIC COMPLISH HERE
 ///////////////////////////////////////////////////////////
-	cout<<"SUCCESS !"<<endl;
+	cout<<"SUCCESS ! call back process_1"<<endl;
 
 ///////////////////////////////////////////////////////////
 ////    HERE IS YOUR CODE TO PROCESS '[-opts]' AND '[-args]' 
@@ -35,19 +35,25 @@ void process_1(vector<vector<string>> OptArgs)
 void process_2(vector<vector<string>> OptArgs)
 {
 ////    SAME AS ABOVE
-	cout<<"SUCCESS !"<<endl;
+	cout<<"SUCCESS ! call back process_2"<<endl;
 ///////////////////////////////////////////////////////////
 	return;
 }
 
 void process_3(vector<vector<string>> OptArgs)
 {
-	cout<<"SUCCESS !"<<endl;
+	cout<<"SUCCESS ! call back process_3"<<endl;
 	return;
 }
 
 void process_4(vector<vector<string>> OptArgs)
 {
-	cout<<"SUCCESS !"<<endl;
+	cout<<"SUCCESS ! call back process_4"<<endl;
+	return;
+}
+
+void process_5(vector<vector<string>> OptArgs)
+{
+	cout<<"SUCCESS ! call back process_5"<<endl;
 	return;
 }

@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.7
+//  VERSION OF LIB    : 1.0.9
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -28,8 +28,10 @@
 //////////////////// _INCLUDE_
 #include <deque>
 #include <vector>
+#include <cctype>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 #include <functional>
 #include <unordered_set>
 
@@ -45,7 +47,7 @@
 //////////////////// _DEFINE_
 
                                   // Version of 'CmdForge'.
-#define FORGE_VER       std::string("1.0.7")
+#define FORGE_VER       std::string("1.0.9")
 
                                   // Default run sign.
 #define DEFT_RSIGN      std::string("> CmdForge [" + FORGE_VER + "] :")
@@ -68,6 +70,14 @@
 #define OPTYPE_M        0x01      // Option type: mandatory.
 #define OPTYPE_R        0x02      // Option type: repeatable.
 #define OPTYPE_D        0x04      // Option type: default.
+
+//////////////////// _CONSTANT_
+
+#ifdef _DEBUG
+static bool g_IsDebug=true;       // Only debug mode will show the message sign/log.
+extern void SetDebug(bool);       // Enable/Disable debug.
+extern bool GetDebug(void);       // Get the debyg status.
+#endif // _DEBUG
 
 ////////////////////---------------------------------------
 
@@ -133,10 +143,10 @@ protected:
 private:
     int s_CurInputLength=0;       // Current input length in terminal.
 public:
-    void Cout(string Msg,int Endl=1);
-    void StdMsg(string Msg,int Level=-1);
+    void Cout(const string &Msg,int Endl=1);
+    void StdMsg(const string &Msg,int Level=-1);
     void CurMove(int Offset);
-    void Refresh(string RunSign,string CurCmd);
+    void Refresh(string &RunSign,string CurCmd);
     void SetInputLength(int CurInputLength);
     int  GetInputLength(void);
 };
@@ -149,7 +159,7 @@ class ApiCan:public SysOut
 {
 public:
     ApiCan(void);
-    ~ApiCan(void);
+    virtual ~ApiCan(void) override;
 protected:
     /*
      * These check the callback arguments on parser phase.
@@ -165,7 +175,7 @@ protected:
     virtual bool ArgValCheck(void);
 private:
     string s_Brief;               // Brief description of api function.
-    vector<string> s_Cmds;        // Command of api function.
+    vector<string> s_Cmds;        // Commands of api function.
     vector<OptFmtData> s_Opts;    // Options of api command.h
                                   // Arguments arranged by option.
     vector<vector<string>> s_OptArgs;
@@ -174,10 +184,10 @@ private:
 
     void Init(void);
 
-    vector<vector<string>> SplitOpts(vector<string> OptsArgs);
-    void SortOptArgs(vector<vector<string>> &OptArgs);
-
-    string OutputFormatting(string Str1,string Str2);
+    vector<vector<string>>
+         SplitOpts(vector<string> &OptsArgs);
+    string
+         FormatTextColumns(const string &Str1,const string &Str2,int LeftWidth,int RightWidth);
     void GenHelpInfo(bool isCalled);
 public:
     bool Check(void);
@@ -186,15 +196,18 @@ public:
     void API(vector<string> CmdOptsArgs);
 
     void SetApi(void (*API)(vector<vector<string>>));
-    void SetBrief(string Brief);
+    void SetBrief(const string &Brief);
 
-    bool ExistCmd(string Cmd);
-    int  CmdIndex(string Cmd);
-    void AppendCmd(string Cmd);
+    bool ExistCmd (const string &Cmd);
+    int  CmdIndex (const string &Cmd);
+    void AppendCmd(const string &Cmd);
 
-    bool ExistOpt(string OptName);
-    int  OptIndex(string OptName);
+    bool ExistOpt (const string &OptName);
+    int  OptIndex (const string &OptName);
     void AppendOpt(OptFmtData Opt);
+
+    vector<string>
+        GetAllOpts(void);
 };
 
 ////////////////////---------------------------------------
@@ -206,7 +219,7 @@ class FData:public SysOut
 {
 public:
     FData(void);
-    virtual ~FData(void);
+    virtual ~FData(void) override;
 protected:
     int s_ResCmdNum;              // Number of reserved command.
     int s_ResApiNum;              // Number of reserved api can.
@@ -215,23 +228,34 @@ protected:
     string s_MainCmd;             // Main command.
     vector<int> s_CmdApiTable;    // Command api table.
     vector<string> s_CmdIndex;    // Command index.
-    vector<string> s_CmdOptsArgs; // Command splited by options, arguments.
+                                  // Command index sorted by alphabet.
+    vector<string> s_SortedCmdIndex;
+    vector<string> s_CmdOptsArgs; // Command splited into command, options, arguments.
     vector<ApiCan> s_ApiCanPool;  // Api can pool.
 
-    vector<string> SplitCmd(string CmdIn);
+    vector<string>
+         SplitCmd(string &CmdIn);
+    void SortStrList(vector<string> &SourceStrList);
 private:
     void Init(void);
+
+    static bool CompareStrAlpha(const string &Str1,const string &Str2);
+    void SortCmdIndex(void);
 public:
-    void SetCmdIn(string CmdIn);
-    void SetMainCmd(string MainCmd);
-    void SetCmdOptArgs(vector<string> CmdOptArgs);
+    void   SetCmdIn(const string &CmdIn);
+    string GetCmdIn(void);
+    void   SetMainCmd(const string &MainCmd);
+    string GetMainCmd(void);
+    void   SetCmdOptsArgs(vector<string> &CmdOptsArgs);
+    vector<string>
+           GetCmdOptsArgs(void);
 
-    bool ExistCmd(string Cmd);
-    int  CmdIndex(string Cmd);
-    void AppendCmd(string Cmd);
+    bool ExistCmd (const string &Cmd);
+    int  CmdIndex (const string &Cmd);
+    void AppendCmd(const string &Cmd);
 
-    bool ExistApiCan(ApiCan ApiCan);
-    int  ApiCanIndex(ApiCan ApiCan);
+    bool ExistApiCan (ApiCan ApiCan);
+    int  ApiCanIndex (ApiCan ApiCan);
     void AppendApiCan(ApiCan ApiCan);
 };
 
@@ -255,8 +279,8 @@ private:
 ///
 public:
     bool CheckHooks(void);
-    void HookApi(string ExistCmd,string NewCmd);
-    void HookApi(string Cmd,void (*API)(vector<vector<string>>));
+    void HookApi(const string &ExistCmd,const string &NewCmd);
+    void HookApi(const string &Cmd,void (*API)(vector<vector<string>>));
 };
 
 ////////////////////---------------------------------------
@@ -270,18 +294,18 @@ public:
     FParser()=default;
     virtual ~FParser()=default;
 protected:
-    virtual void APIhelp   (vector<string> OptsArgs);
-    virtual void APIversion(vector<string> OptsArgs);
-    virtual void APIsystem (vector<string> OptsArgs);
-    virtual void APIexit   (vector<string> OptsArgs);
+    virtual void APIhelp   (vector<string> &OptsArgs);
+    virtual void APIversion(vector<string> &OptsArgs);
+    virtual void APIsystem (vector<string> &OptsArgs);
+    virtual void APIexit   (vector<string> &OptsArgs);
     virtual void ForkReserved(int Index);
 private:
 ///
 /// NONE FOR THIS CLASS
 ///
 public:
-    void ParserCmd(string CmdIn);
-    void ForkApi(string Cmd);
+    void ParserCmd(void);
+    void ForkApi(const string &Cmd);
 };
 
 ////////////////////---------------------------------------
@@ -294,7 +318,7 @@ class ForgeHwnd:private FParser,private FBuilder
 public:
     ForgeHwnd(void);
     ForgeHwnd(int argc,char *argv[]);
-    ~ForgeHwnd(void);
+    virtual ~ForgeHwnd(void) override;
 protected:
     int s_CLIMode;                // Mode of CLI (0:One-Line,1:Interact).
     int s_CurCmdPos;              // Current position of history commands.
@@ -305,40 +329,48 @@ protected:
 #elif __linux__
     struct termios s_Original;    // Original setting of linux terminal.
 #endif
-    void TerminalSet(void);
-    void TerminalReset(void);
+    void SetTerminal(void);
+    void ResetTerminal(void);
 
-    void CmdAutoComplete(string *CurCmd);
+    void Complete(string &SourceStr,vector<string> &TargetStrList);
+    void CompleteOpt(string &CurCmd,string &CurOpt);
+    void CompleteCmd(string &CurCmd);
+    void AutoCompleteCmd(string &CurCmd);
 
     void InputCmdTask(CmdExchangeData *Data);
     void DetecKeyTask(CmdExchangeData *Data);
 
-    void APIhelp   (vector<string> OptsArgs) override;
-    void APIversion(vector<string> OptsArgs) override;
-    void APIsystem (vector<string> OptsArgs) override;
-    void APIexit   (vector<string> OptsArgs) override;
+    void APIhelp   (vector<string> &OptsArgs) override;
+    void APIversion(vector<string> &OptsArgs) override;
+    void APIsystem (vector<string> &OptsArgs) override;
+    void APIexit   (vector<string> &OptsArgs) override;
     void ForkReserved(int Index) override;
 private:
     void Init(void);
     bool Check(void);
 
-    void StoreCmd(string CurCmd);
-    void GetLastCmd(string *CurCmd);
-    void GetNextCmd(string *CurCmd);
+    void AppendCmdIn (const string &CurCmd);
+    void GetLastCmdIn(string &CurCmd);
+    void GetNextCmdIn(string &CurCmd);
 
     void GenHelpInfo(void);
     void GenVersionInfo(void);
 public:
     void SetCLICfg(CLICfgData Cfg);
     void SetCLIMode(int Mode);
-    void SetCLIVersion(string Version);
-    void SetCLIMainCmd(string MainCmd);
+    void SetCLIVersion(const string &Version);
+    void SetCLIMainCmd(const string &MainCmd);
 
-    void HookCmdApi(string ExistCmd,string NewCmd);
-    void HookCmdApi(string Cmd,void (*API)(vector<vector<string>>));
+    OptFmtData
+         GenOptFmt(const string &LongFmt,const string &ShortFmt,const string &Brief,const vector<ArgFmtData> &Args,int OptType);
 
-    void SetCmdBrief(string Cmd,string Brief);
-    void SetCmdOpt(string Cmd,OptFmtData OptFmt);
+    void SetCmdBrief(const string &Cmd,const string &Brief);
+    void SetCmdOpt  (const string &Cmd,const OptFmtData &CmdOpt);
+    void SetCmdOpts (const string &Cmd,const vector<OptFmtData> &CmdOpts);
 
-    int  MainLoop(string RunSign=DEFT_RSIGN);
+    void HookCmdApi(const string &ExistCmd,const string &NewCmd);
+    void HookCmdApi(const string &Cmd,void (*API)(vector<vector<string>>));
+    void HookCmdApi(const string &Cmd,const string &Brief,const vector<OptFmtData> &Opts,void (*API)(vector<vector<string>>));
+
+    int  MainLoop(const string &RunSign=DEFT_RSIGN);
 };
