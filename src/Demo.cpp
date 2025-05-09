@@ -15,15 +15,17 @@
 //
 //  [ATTENTION]
 //
+//      Under '_DEBUG' mode:
+//      
 //      CmdForge will always auto-check the valid. So you might get some
 //      infomations, warnings, and errors after build.
 //
 //      CmdForge will stop when you have at least one error even fatal. Other
 //      infomations and warnings will be omitted.
 //
-//      But we also strongly suggest you to check every warnings, because this
-//      only show CmdForge don't meet that, prevent the running of main loop,
-//      and not actually know what you want to do.
+//      But we also strongly suggest you to check every warning, Because this
+//      only shows that CmdForge does not think that these problems will
+//      prevent the main loop from running.
 // ----------------------------------------------------------------------------
 
 #include "APIs.h"                 // Your API functions
@@ -44,7 +46,7 @@ int main(int argc,char *argv[])
     CLICfg.InputSleepTime=20;
     CLICfg.DetectSleepTime=20;    // Suggest set in '10-100'.
     CLICfg.MaxStoredCmd=20;
-    CLICfg.ProgramName="Demo Process";
+    CLICfg.ProgramName="CmdForge Demo";
     CLICfg.Version="1.0.0.0";
     CLIF.SetCLICfg(CLICfg);
 
@@ -53,36 +55,30 @@ int main(int argc,char *argv[])
     CLIF.SetCLIMainCmd("proc");
 
     CLIF.HookCmdApi("-start",process_1);
-    CLIF.SetCmdBrief("-start","start main process");
+    CLIF.SetCmdBrief("-start","start main process of this demo, it accept no arguments.");
 
     CLIF.HookCmdApi("-do",process_2);
-    CLIF.SetCmdBrief("-do","do process");
+    CLIF.SetCmdBrief("-do","this will create a new process task to do something, accept what please see '[main] -do -h/-help'.");
 
     CLIF.HookCmdApi("-stop",process_3);
-    CLIF.SetCmdBrief("-stop","stop process");
+    CLIF.SetCmdBrief("-stop","this will stop a exist process, accept what same as command '-do'.");
 
     CLIF.HookCmdApi("-end",process_4);
-    CLIF.SetCmdBrief("-end","end main process");
+    CLIF.SetCmdBrief("-end","end process of this demo, it accept no arguments.");
 
-    OptFmt.LongFmt="--id";
-    OptFmt.ShortFmt="-i";
-    OptFmt.Brief="process id";
-    OptFmt.Args.push_back(ArgFmt);
-    OptFmt.OptType=OPTYPE_D|OPTYPE_M;
+    //
+    // Here we use new method to generate the option data.
+    // (new introduced in 1.0.8, we suggest you use this method)
+    //
+    OptFmt=CLIF.GenOptFmt("--id","-i","process id",{ArgFmt},OPTYPE_D|OPTYPE_O);
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--task";
-    OptFmt.ShortFmt="-t";
-    OptFmt.Brief="process task";
-    OptFmt.OptType=OPTYPE_M|OPTYPE_R;
+    OptFmt=CLIF.GenOptFmt("--task","-t","assigin task to current process.",{ArgFmt},OPTYPE_M|OPTYPE_R);
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt.LongFmt="--occupy";
-    OptFmt.ShortFmt="-o";
-    OptFmt.Brief="process occupy";
-    OptFmt.OptType=OPTYPE_O;
+    OptFmt=CLIF.GenOptFmt("--occupy","-o","resource occupy by process.",{ArgFmt},OPTYPE_O);
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
@@ -97,8 +93,8 @@ int main(int argc,char *argv[])
     //        functions are automatically ignored by CmdForge.
     //     3. CmdForge checks that the hooked package function 
     //        if is valid (Do not include reserved subcommands).
-    //     4. Cause by the new hook introduced in 1.0.7, there
-    //        are some new warnings.
+    //     4. Cause by the hook introduced in 1.0.7, there are
+    //        some new warnings.
     //
 
     // 1.
@@ -124,7 +120,9 @@ int main(int argc,char *argv[])
     //        function, in other words, different commands can
     //        share the same package function.
     //     2. You can hook new command to a exist command
-    //        (new introduced in 1.0.7).
+    //        (introduced in 1.0.7).
+    //     3. You can hook new coomand with api, brief, options.
+    //        (new introduced in 1.0.9).
     //
     // So, we can use command like:
     //
@@ -136,14 +134,17 @@ int main(int argc,char *argv[])
     //
 
     // 1.
-    CLIF.HookCmdApi("--startit",process_1);
-    CLIF.HookCmdApi("--doit",process_2);
-    CLIF.HookCmdApi("--stopit",process_3);
-    CLIF.HookCmdApi("--endit",process_4);
+    CLIF.HookCmdApi("--start-it",process_1);
+    CLIF.HookCmdApi("--do-it",process_2);
+    CLIF.HookCmdApi("--stop-it",process_3);
+    CLIF.HookCmdApi("--end-it",process_4);
 
     // 2.
-    CLIF.HookCmdApi("-do","-dothis");
-    CLIF.HookCmdApi("-stop","-stopthis");
+    CLIF.HookCmdApi("-do","--do-this");
+    CLIF.HookCmdApi("-stop","--stop-this");
+
+    // 3.
+    CLIF.HookCmdApi("-find","find the process by id or others, return the detail message of process.",{OptFmt},process_5);
 
 #endif
     // START CLI MAIN LOOP

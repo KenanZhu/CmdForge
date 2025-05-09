@@ -1,0 +1,95 @@
+### Release Version: ###
+
+#### Release Tag 1.0.9 On 2025-05-09: ####
+
+  Added Features:
+  + Support new key function : delete.
+  + Support debug information output in the Build phase
+  + Support new class method to hook sub-command with api, brief, options :\
+    *ForgeHwnd::HookCmdApi(const std::string &,const std::string &,const std::vector < OptFmtData > &,void ( * )( std::vector < std::vector < std::string > > ))*.
+  + Support new class method to generate option :\
+    *ForgeHwnd::GenOptFmt(const std::string &,const std::string &,const std::string &,const std::vector < ArgFmtData > &,int)*;
+  + Support new class method to set options of a sub-command :\
+    *ForgeHwnd::SetCmdOpts(const std::string &,const std::vector < OptFmtData > &)*.
+  + Support new and more user-friendly commands, option auto-completion function.
+  
+  Fixed Bugs:
+  - Fix the index error of history command selection.
+
+  Others:
+  * Optimize performance.
+
+#### Release Tag 1.0.7 On 2025-05-03: ####
+
+  Added Features:
+  + Support command input mode : one-line and interact.
+  + Support new class method to hook new sub-command directly by a exist sub-command :
+      ForgeHwnd::HookCmdApi(const std::string &,const std::string &);
+  
+  Fixed Bugs:
+  - Fix mistakes in the demo of 'CmdForge'.
+  
+  Others:
+
+#### Release Tag 1.0.6 On 2025-04-27: ####
+
+  Added Features:
+  + Support the generation of more readable help information.
+  
+  Fixed Bugs:
+  - Fix the flickering issue when calling the input refresh function.
+  
+  Others:
+  * Optimize output style of infomation message.
+
+#### Release Tag 1.0.5 On 2025-03-14: ####
+
+  Added Features:
+  + Support input by clip board.
+  + Support more specific set of option types.
+  
+  Fixed Bugs:
+  
+  Others:
+  * Optimize performance of forge frame lib.
+  * Optimize message output by unify them into standard message function.
+
+#### Release Tag 1.0.3 On 2025-03-13: ####
+
+  Added Features:
+  + Support new option type : repeatable.
+  + Support cursor move by (right/left) arrow keys.
+  + Support new class method to set mode of CLI :\
+      *ForgeHwnd::SetCLIMode(int)*;
+  + Support new class method to set version of CLI :\
+      *ForgeHwnd::SetCLIVersion(const std::string &)*;
+  
+  Fixed Bugs:
+  
+  Others:
+  * Optimize the stability of forge frame lib.
+
+#### Release Tag 1.0.1 On 2025-03-10: ####
+
+  Added Features:
+  
+  Fixed Bugs:
+  + Fixed the naming ambiguity of the optional type options.
+  + Fixed the determination method of the default option.
+  
+  Others:
+  * Optimize occuption of resource on Windows and Linux.
+
+#### Release Tag 1.0.0 On 2025-03-05: ####
+
+  Added Features:
+  + Support Linux.
+  + Support select history command by (up/down) arrow key.
+  + Support parser sub-command within only optional type option, default option type.
+  
+  Fixed Bugs:
+  
+  Others:
+  * Optimize runtime self-check.
+
+#### First Release On 2025-02-26: ####
