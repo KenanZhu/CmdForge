@@ -18,7 +18,7 @@
 //      Under '_DEBUG' mode:
 //      
 //      CmdForge will always auto-check the valid. So you might get some
-//      infomations, warnings, and errors after build.
+//      infomation, warnings, and errors after build.
 //
 //      CmdForge will stop when you have at least one error even fatal. Other
 //      infomations and warnings will be omitted.
@@ -107,7 +107,7 @@ int main(int argc,char *argv[])
     CLIF.HookCmdApi("-chk",nullptr);
 
     // 4.
-    CLIF.HookCmdApi("-chk","-do");
+    CLIF.HookCmdApi("-seek","-seek-it");
     CLIF.HookCmdApi("-do","-do");
     CLIF.HookCmdApi("-do","-stop");
 
@@ -121,7 +121,7 @@ int main(int argc,char *argv[])
     //        share the same package function.
     //     2. You can hook new command to a exist command
     //        (introduced in 1.0.7).
-    //     3. You can hook new coomand with api, brief, options.
+    //     3. You can hook new command with api, brief, options.
     //        (new introduced in 1.0.9).
     //
     // So, we can use command like:

@@ -76,7 +76,7 @@
 #ifdef _DEBUG
 static bool g_IsDebug=true;       // Only debug mode will show the message sign/log.
 extern void SetDebug(bool);       // Enable/Disable debug.
-extern bool GetDebug(void);       // Get the debyg status.
+extern bool GetDebug(void);       // Get the debug status.
 #endif // _DEBUG
 
 ////////////////////---------------------------------------
@@ -122,8 +122,8 @@ struct CmdExchangeData {          // Exchanged data type between threads.
 };
 
 #ifdef __linux__
-extern bool _kbhit(void);         // Keyborad hit detect.
-extern int _getch(void);          // Get keyborad input.
+extern bool _kbhit(void);         // Keyboard hit detect.
+extern int _getch(void);          // Get keyboard input.
 #endif
 
 ////////////////////---------------------------------------
@@ -164,22 +164,22 @@ protected:
     /*
      * These check the callback arguments on parser phase.
      */
-    virtual bool PreCheck(vector<string> &OptsArgs);
-    virtual bool PostCheck(vector<vector<string>> &OptArgs);
+    virtual bool PreParserCheck(vector<string> &OptsArgs);
+    virtual bool PostParserCheck(vector<vector<string>> &OptArgs);
 
     /*
      * These check the forge valid of this ApiCan on build phase.
      */
-    virtual bool BasicCheck(void);
-    virtual bool OptValCheck(void);
-    virtual bool ArgValCheck(void);
+    virtual bool BasicBuildCheck(void);
+    virtual bool OptBuildCheck(void);
+    virtual bool ArgBuildCheck(void);
 private:
     string s_Brief;               // Brief description of api function.
     vector<string> s_Cmds;        // Commands of api function.
     vector<OptFmtData> s_Opts;    // Options of api command.h
                                   // Arguments arranged by option.
     vector<vector<string>> s_OptArgs;
-                                  // Api function pointer callbacked.
+                                  // Api callback function pointer.
     void (*s_API)(vector<vector<string>>);
 
     void Init(void);
@@ -190,7 +190,7 @@ private:
          FormatTextColumns(const string &Str1,const string &Str2,int LeftWidth,int RightWidth);
     void GenHelpInfo(bool isCalled);
 public:
-    bool Check(void);
+    bool BuildCheck(void);
 
     void *API(void);
     void API(vector<string> CmdOptsArgs);
@@ -223,14 +223,14 @@ public:
 protected:
     int s_ResCmdNum;              // Number of reserved command.
     int s_ResApiNum;              // Number of reserved api can.
-    string s_CmdIn;               // Command inputed by user.
+    string s_CmdIn;               // Command inputted by user.
     string s_RunSign;             // Runing sign of CmdForge.
     string s_MainCmd;             // Main command.
     vector<int> s_CmdApiTable;    // Command api table.
     vector<string> s_CmdIndex;    // Command index.
                                   // Command index sorted by alphabet.
     vector<string> s_SortedCmdIndex;
-    vector<string> s_CmdOptsArgs; // Command splited into command, options, arguments.
+    vector<string> s_CmdOptsArgs; // Command split into command, options, arguments.
     vector<ApiCan> s_ApiCanPool;  // Api can pool.
 
     vector<string>
@@ -347,7 +347,7 @@ protected:
     void ForkReserved(int Index) override;
 private:
     void Init(void);
-    bool Check(void);
+    bool BuildCheck(void);
 
     void AppendCmdIn (const string &CurCmd);
     void GetLastCmdIn(string &CurCmd);

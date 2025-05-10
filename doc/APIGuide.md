@@ -68,7 +68,7 @@ Brief：主界面构建与运行维持类。
 |***void***  *APIversion*(*std::vector< std::string >* &) *override*|预留命令函数：版本信息|
 |***void***  *APIsystem*(*std::vector< std::string >* &) *override*|预留命令函数：系统接口|
 |***void***  *APIexit*(*std::vector< std::string >* &) *override*|预留命令函数：退出进程|
-|***void***  *ForkReseved*(*int*) *override*|回调预留命令函数|
+|***void***  *ForkReserved*(*int*) *override*|回调预留命令函数|
 |||
 |**private :**||
 |***void***  *Init*(*void*)|系统构建初始化|

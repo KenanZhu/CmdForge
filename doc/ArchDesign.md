@@ -231,7 +231,7 @@ int main(int args,char *argv[])
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 
-    OptFmt=CLIF.GenOptFmt("--task","-t","assigin task to current process.",{ArgFmt},OPTYPE_M|OPTYPE_R);
+    OptFmt=CLIF.GenOptFmt("--task","-t","assign task to current process.",{ArgFmt},OPTYPE_M|OPTYPE_R);
     CLIF.SetCmdOpt("-do",OptFmt);
     CLIF.SetCmdOpt("-stop",OptFmt);
 

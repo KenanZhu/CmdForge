@@ -162,7 +162,7 @@ ApiCan::~ApiCan(void)
 }
 ///    PROTECTED :
 /////////////////////////////////////////////////
-bool ApiCan::PreCheck(vector<string> &OptsArgs)
+bool ApiCan::PreParserCheck(vector<string> &OptsArgs)
 {
     int i,Opts;
     bool State;
@@ -193,7 +193,7 @@ bool ApiCan::PreCheck(vector<string> &OptsArgs)
     return State;
 }
 
-bool ApiCan::PostCheck(vector<vector<string>> &OptArgs)
+bool ApiCan::PostParserCheck(vector<vector<string>> &OptArgs)
 {
     bool State;
     int i,Index,ExpArgs,ActArgs,ExpOpts,ActOpts,RepeatTimes,Size,Opts;
@@ -242,7 +242,7 @@ bool ApiCan::PostCheck(vector<vector<string>> &OptArgs)
 
     // Check the arguments.
     // :
-    // *The OptArgs is splited by exist option, so no need to check option.
+    // *The OptArgs is split by exist option, so no need to check option.
     // 
     // 1. It will check the amount of received argument is equal with the expect.
 
@@ -260,7 +260,7 @@ bool ApiCan::PostCheck(vector<vector<string>> &OptArgs)
     return State;
 }
 
-bool ApiCan::BasicCheck(void)
+bool ApiCan::BasicBuildCheck(void)
 {
     bool State;
     int Opts,Cmds;
@@ -274,7 +274,7 @@ bool ApiCan::BasicCheck(void)
         return State=false;
     }
     else if (Cmds==0) {
-        this->StdMsg("no [-cmd] was hooked with a api",3);
+        this->StdMsg("no [-cmd] was hooked in a api can",3);
         return State=false;
     }
     else if (Opts==0) {
@@ -284,7 +284,7 @@ bool ApiCan::BasicCheck(void)
     return State;
 }
 
-bool ApiCan::OptValCheck(void)
+bool ApiCan::OptBuildCheck(void)
 {
     bool State;
     int i,Opts,ExpDefault,ActDefault;
@@ -302,13 +302,13 @@ bool ApiCan::OptValCheck(void)
     for (i=0;i<Opts;i++) if (s_Opts[i].OptType&OPTYPE_D) ActDefault++;
 
     if (ActDefault>ExpDefault) {
-        this->StdMsg("[-cmd] '"+s_Cmds[0]+"' expect only 1 default [-opt], but you set "+to_string(ActDefault)+" default [-opt]",3);
+        this->StdMsg("[-cmd] '"+s_Cmds[0]+"' expect only 1 default [-opt], but you set "+to_string(ActDefault)+" default [-opt]",2);
         return State=false;
     }
     return State;
 }
 
-bool ApiCan::ArgValCheck(void)
+bool ApiCan::ArgBuildCheck(void)
 {
     bool State;
     int i,Opts;
@@ -353,7 +353,7 @@ vector<vector<string>> ApiCan::SplitOpts(vector<string> &OptsArgs)
             if (this->ExistOpt(OptsArgs[j])) j-=1;
             else if (j+1==Size) j+=0;
 
-            // Store the argumets.
+            // Store the arguments.
             for (k=i;k<=j;k++) TempOptArg.push_back(OptsArgs[k]);
             i=j; break;
         }
@@ -459,14 +459,14 @@ void ApiCan::GenHelpInfo(bool isCalled)
 }
 ///    PUBLIC :
 /////////////////////////////////////////////////
-bool ApiCan::Check(void)
+bool ApiCan::BuildCheck(void)
 {
     bool State;
         
     State=true;
-    if (!this->BasicCheck()) return State=false;
-    else if (!this->OptValCheck()) return State=false;
-    else if (!this->ArgValCheck()) return State=false;
+    if (!this->BasicBuildCheck()) return State=false;
+    else if (!this->OptBuildCheck()) return State=false;
+    else if (!this->ArgBuildCheck()) return State=false;
     
     return State;
 }
@@ -492,14 +492,14 @@ void ApiCan::API(vector<string> CmdOptsArgs)
     OptsArgs=CmdOptsArgs;
 
     // Check the original command.
-    if (!this->PreCheck(OptsArgs)) { 
+    if (!this->PreParserCheck(OptsArgs)) { 
         s_OptArgs.clear();
         return;
     }
     s_OptArgs=this->SplitOpts(OptsArgs);
 
     // Check the post-process command.
-    if (!this->PostCheck(s_OptArgs)) {
+    if (!this->PostParserCheck(s_OptArgs)) {
         s_OptArgs.clear();
         return;
     }
@@ -662,7 +662,7 @@ vector<string> FData::SplitCmd(string &CmdIn)
 {
     char Sign;
     int i,j,Size;
-    vector<string> CmdSplited;
+    vector<string> CmdSplit;
 
     Sign=' ';
     Size=(int)CmdIn.size();
@@ -672,11 +672,11 @@ vector<string> FData::SplitCmd(string &CmdIn)
             if (CmdIn[j]!=Sign&&j+1!=Size) continue;
             if (CmdIn[j]==Sign) j-=1;
             else if (j+1==Size) j+=0;
-            CmdSplited.push_back(CmdIn.substr(i,(j-i)+1));
+            CmdSplit.push_back(CmdIn.substr(i,(j-i)+1));
             i=j; break;
         }
     }
-    return CmdSplited;
+    return CmdSplit;
 }
 
 bool FData::ExistCmd(const string &Cmd)
@@ -817,7 +817,7 @@ bool FBuilder::CheckHooks(void)
     Cmds=(int)s_CmdIndex.size();
     for (i=s_ResCmdNum;i<Cmds;i++) {
         if (s_ApiCanPool[s_CmdApiTable[i]].API()==nullptr) {
-            this->StdMsg("you are hooking [-cmd] '"+s_CmdIndex[i]+"' with a invaild <ApiCan.API() -> null>",4);
+            this->StdMsg("you are hooking [-cmd] '"+s_CmdIndex[i]+"' with a invalid <ApiCan.API() -> null>",3);
             State=false;
         }
     }
@@ -851,7 +851,7 @@ void FBuilder::HookApi(const string &Cmd,void (*API)(vector<vector<string>>))
     ApiCan TempCan;
 
     if (this->ExistCmd(Cmd)) {
-        this->StdMsg("[-cmd] '"+Cmd+"'already hooked, current hook will be omited",1);
+        this->StdMsg("[-cmd] '"+Cmd+"' already hooked, current hook will be omitted",1);
         return;
     }
     this->AppendCmd(Cmd);
@@ -923,17 +923,17 @@ void FParser::ParserCmd(void)
     if (TempCmdOptsArgs.empty()) {
         this->StdMsg("no command input",0);
     }
-    // REJECT: invaild main command.
+    // REJECT: invalid main command.
     else if (TempCmdOptsArgs[0]!=TempMainCmd) {
-        this->StdMsg("invaild command, no '"+TempMainCmd+"'",0);
+        this->StdMsg("invalid command, no '"+TempMainCmd+"'",0);
     }
     // REJECT: no [-cmd] section.
     else if (TempCmdOptsArgs.size()<2) {
-        this->StdMsg("invaild command, no [-cmd]",0);
+        this->StdMsg("invalid command, no [-cmd]",0);
     }                                       
     // REJECT: no [-cmd] matched.
     else if ((Index=this->CmdIndex(TempCmdOptsArgs[1]))<0) {
-        this->StdMsg("invaild command, unknow [-cmd] '"+TempCmdOptsArgs[1]+"'",0);
+        this->StdMsg("invalid command, unknow [-cmd] '"+TempCmdOptsArgs[1]+"'",0);
     }
     // ACCEPT
     else {
@@ -1362,7 +1362,7 @@ void ForgeHwnd::Init(void)
     s_ResApiNum=(int)s_ApiCanPool.size();
 }
 
-bool ForgeHwnd::Check(void)
+bool ForgeHwnd::BuildCheck(void)
 {
     bool State;
     int i,Apis;
@@ -1372,7 +1372,7 @@ bool ForgeHwnd::Check(void)
     if (!this->CheckHooks()) State=false;
 
     for (i=s_ResApiNum;i<Apis;i++) {
-        if (!s_ApiCanPool[i].Check()) State=false;
+        if (!s_ApiCanPool[i].BuildCheck()) State=false;
     }
     return State;
 }
@@ -1561,21 +1561,24 @@ void ForgeHwnd::HookCmdApi(const string &Cmd,const string &Brief,const vector<Op
 
 int ForgeHwnd::MainLoop(const string &RunSign)
 {
-    bool isIntract;
+    bool isInteract;
     CmdExchangeData Data;
 
-    isIntract=(s_CLIMode==INTRACT_M);
+    isInteract=(s_CLIMode==INTRACT_M);
 
     s_RunSign=RunSign;
     Data.ExitFlag=false;
     Data.CurInput.clear();
-    Data.CurInput=isIntract?"":s_MainCmd+s_HistoryCmd[0];
-    Data.CursorPos=isIntract?0:(int)Data.CurInput.length();
+    Data.CurInput=isInteract?"":s_MainCmd+s_HistoryCmd[0];
+    Data.CursorPos=isInteract?0:(int)Data.CurInput.length();
 
-    if (!this->Check()) return 0;
+    if (!this->BuildCheck()) {
+        this->Cout("\nCmdForge encountered some errors, build terminated !\n");
+        return 0;
+    }
 
     this->SetTerminal();
-    if (!isIntract) {
+    if (!isInteract) {
     // Mode : command oneline.
 
         this->InputCmdTask(&Data);
@@ -1590,5 +1593,5 @@ int ForgeHwnd::MainLoop(const string &RunSign)
     }
     this->ResetTerminal();
 
-    return 0;
+    return 1;
 }
