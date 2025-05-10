@@ -236,7 +236,7 @@ bool ApiCan::PostParserCheck(vector<vector<string>> &OptArgs)
         RepeatTimes=(int)(InputOpts.count(s_Opts[i].LongFmt)+InputOpts.count(s_Opts[i].ShortFmt));
         if (RepeatTimes>1) {
             this->StdMsg("got "+to_string(RepeatTimes)+" [-opt](s) '"+s_Opts[i].LongFmt+"/"+s_Opts[i].ShortFmt+"' in command, but it is unrepeatable",0);
-            continue;
+            State=false;
         }
     }
 
