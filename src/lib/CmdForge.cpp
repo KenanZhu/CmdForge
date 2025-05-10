@@ -1236,9 +1236,10 @@ void ForgeHwnd::DetecKeyTask(CmdExchangeData *Data)
                         Data->CursorPos--;
                     }
                     break;
-                case 0x81: // Delete
+                case 0x33: // Delete
                     if (Data->CursorPos<=(int)Data->CurInput.size()) {
                         Data->CurInput.erase(Data->CursorPos,1);
+                        while (_kbhit()) _getch();
                     }
                     break;
                 }
