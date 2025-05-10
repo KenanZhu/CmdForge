@@ -1103,16 +1103,15 @@ void ForgeHwnd::AutoCompleteCmd(string &CurCmd)
     
     Cmds=(int)s_CmdIndex.size();
 
-    // COMP : no input, complete the main command.
-    if (CurCmd.empty()) {
-        CurCmd=this->GetMainCmd();
-        return;
-    }
     TempCmd=CurCmd;
     TempCmds=this->SplitCmd(TempCmd);
 
+    // COMP : no input, complete the main command.
+    if (TempCmds.empty()) {
+        TempCmds.push_back(this->GetMainCmd());
+    }
     // COMP : complete the main command.
-    if ((int)TempCmds.size()<=1) {
+    else if ((int)TempCmds.size()<=1) {
         TempCmds[0]=this->GetMainCmd();
     }
     // COMP : complete the sub-command.
