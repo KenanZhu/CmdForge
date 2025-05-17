@@ -37,9 +37,9 @@ int main(int argc,char *argv[])
     ///////////////////////////////////////////////////////
     ForgeHwnd CLIF(argc,argv);    // CLI main interface.
                                   // (Only interact mode when use default).
-    ArgFmtData ArgFmt={0};        // Argument format data.
-    CLICfgData CLICfg={0};        // CLI configuration data.
-    OptFmtData OptFmt={0};        // Option format data.
+    OptionData OptFmt={0};        // Option format data.
+    ArgumentData ArgFmt={0};      // Argument format data.
+    CLIConfigData CLICfg={0};     // CLI configuration data.
 
     // SET YOUR CLI CONFIGURATION HERE
     ///////////////////////////////////////////////////////
@@ -54,33 +54,29 @@ int main(int argc,char *argv[])
     ///////////////////////////////////////////////////////
     CLIF.SetCLIMainCmd("proc");
 
-    CLIF.HookCmdApi("-start",process_1);
-    CLIF.SetCmdBrief("-start","start main process of this demo, it accept no arguments.");
+    CLIF.HookCmdApi("-start","start main process of this demo, it accept no arguments.",
+        {},process_1);
 
-    CLIF.HookCmdApi("-do",process_2);
-    CLIF.SetCmdBrief("-do","this will create a new process task to do something, accept what please see '[main] -do -h/-help'.");
+    CLIF.HookCmdApi("-do","this will create a new process task to do something, accept what please see '[main] -do -h/-help'.",
+        {
+            CLIF.GenOptFmt("--id","-i","process id",{ArgFmt},OPTYPE_D|OPTYPE_O),
+            CLIF.GenOptFmt("--task","-t","assign task to current process.",{ArgFmt},OPTYPE_M|OPTYPE_R),
+            CLIF.GenOptFmt("--occupy","-o","resource occupy by process.",{ArgFmt},OPTYPE_O)
+        },process_2);
 
-    CLIF.HookCmdApi("-stop",process_3);
-    CLIF.SetCmdBrief("-stop","this will stop a exist process, accept what same as command '-do'.");
+    CLIF.HookCmdApi("-stop","this will stop a exist process, accept what same as command '-do'.",
+        {
+            CLIF.GenOptFmt("--id","-i","process id",{ArgFmt},OPTYPE_D|OPTYPE_O),
+            CLIF.GenOptFmt("--task","-t","assign task to current process.",{ArgFmt},OPTYPE_M|OPTYPE_R),
+            CLIF.GenOptFmt("--occupy","-o","resource occupy by process.",{ArgFmt},OPTYPE_O)
+        },process_3);
 
-    CLIF.HookCmdApi("-end",process_4);
-    CLIF.SetCmdBrief("-end","end process of this demo, it accept no arguments.");
+    CLIF.HookCmdApi("-end","end process of this demo, it accept no arguments.",{},process_4);
 
     //
     // Here we use new method to generate the option data.
-    // (new introduced in 1.0.8, we suggest you use this method)
+    // (new introduced in 1.0.9, we suggest you use this method)
     //
-    OptFmt=CLIF.GenOptFmt("--id","-i","process id",{ArgFmt},OPTYPE_D|OPTYPE_O);
-    CLIF.SetCmdOpt("-do",OptFmt);
-    CLIF.SetCmdOpt("-stop",OptFmt);
-
-    OptFmt=CLIF.GenOptFmt("--task","-t","assigin task to current process.",{ArgFmt},OPTYPE_M|OPTYPE_R);
-    CLIF.SetCmdOpt("-do",OptFmt);
-    CLIF.SetCmdOpt("-stop",OptFmt);
-
-    OptFmt=CLIF.GenOptFmt("--occupy","-o","resource occupy by process.",{ArgFmt},OPTYPE_O);
-    CLIF.SetCmdOpt("-do",OptFmt);
-    CLIF.SetCmdOpt("-stop",OptFmt);
 
     // THESE ARE TESTS YOU CAN DEBUG TO KNOW MORE DETAIL
     ///////////////////////////////////////////////////////
@@ -144,7 +140,10 @@ int main(int argc,char *argv[])
     CLIF.HookCmdApi("-stop","--stop-this");
 
     // 3.
-    CLIF.HookCmdApi("-find","find the process by id or others, return the detail message of process.",{OptFmt},process_5);
+    CLIF.HookCmdApi("-find","find the process by id or others, return the detail message of process.",
+        {
+            CLIF.GenOptFmt("--id","-i","process id",{ArgFmt},OPTYPE_D|OPTYPE_O),
+        },process_5);
 
 #endif
     // START CLI MAIN LOOP

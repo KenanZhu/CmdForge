@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.9
+//  VERSION OF LIB    : 1.1.1
 // ----------------------------------------------------------------------------
 
 #pragma once
@@ -47,10 +47,10 @@
 //////////////////// _DEFINE_
 
                                   // Version of 'CmdForge'.
-#define FORGE_VER       std::string("1.0.9")
+#define FORGE_VER       std::string("1.1.1")
 
                                   // Default run sign.
-#define DEFT_RSIGN      std::string("> CmdForge [" + FORGE_VER + "] :")
+#define DEFT_RSIGN      std::string("> CmdForge [" + FORGE_VER + "] : ")
 
                                   // Single space.
 #define S               std::string(" ")
@@ -92,30 +92,28 @@ class FBuilder;
 class FParser;
 class ForgeHwnd;
 
-struct ArgFmtData {               // Argument control data type.
+struct ArgumentData {             // Argument control data type.
     int ArgType=0;                // Argument type.
     string Brief;                 // Brief description.
 };
 
-struct OptFmtData {               // Option control data type.
+struct OptionData {               // Option control data type.
     int OptType=0;                // Option type.
     string Brief;                 // Brief description.
     string LongFmt;               // Long format option.
     string ShortFmt;              // Short format option.
-    vector<ArgFmtData> Args;      // Arguments of option.
+    vector<ArgumentData> Args;    // Arguments of option.
 };
 
-struct CLICfgData {               // CLI configuration data type.
+struct CLIConfigData {            // CLI configuration data type.
     int MaxStoredCmd=0;           // Maximum stored history commands.
-
     int InputSleepTime=0;         // Sleep time of command input thread.
     int DetectSleepTime=0;        // Sleep time of key detect thread.
-
     string ProgramName;           // Name of program.
     string Version;               // Version info of CLI.
 };
 
-struct CmdExchangeData {          // Exchanged data type between threads.
+struct RunTimeCmdData {           // Runtime command data.
     int CursorPos=0;              // Cursor position of command.
     bool ExitFlag=false;          // Exit flag of thread.
     string CurInput;              // Current input.
@@ -162,21 +160,22 @@ public:
     virtual ~ApiCan(void) override;
 protected:
     /*
-     * These check the callback arguments on parser phase.
+     * These check on parser phase.
      */
-    virtual bool PreParserCheck(vector<string> &OptsArgs);
-    virtual bool PostParserCheck(vector<vector<string>> &OptArgs);
+    virtual bool ParserCheckPre (vector<string> &OptsArgs);
+    virtual bool ParserCheckPost(vector<vector<string>> &OptArgs);
 
     /*
-     * These check the forge valid of this ApiCan on build phase.
+     * These check on build phase.
      */
-    virtual bool BasicBuildCheck(void);
-    virtual bool OptBuildCheck(void);
-    virtual bool ArgBuildCheck(void);
+    virtual bool BuildCheckBasic(void);
+    virtual bool BuildCheckCmds (void);
+    virtual bool BuildCheckOpts (void);
+    virtual bool BuildCheckArgs (void);
 private:
     string s_Brief;               // Brief description of api function.
     vector<string> s_Cmds;        // Commands of api function.
-    vector<OptFmtData> s_Opts;    // Options of api command.h
+    vector<OptionData> s_Opts;    // Options of api command.h
                                   // Arguments arranged by option.
     vector<vector<string>> s_OptArgs;
                                   // Api callback function pointer.
@@ -184,10 +183,8 @@ private:
 
     void Init(void);
 
-    vector<vector<string>>
-         SplitOpts(vector<string> &OptsArgs);
-    string
-         FormatTextColumns(const string &Str1,const string &Str2,int LeftWidth,int RightWidth);
+    vector<vector<string>> SplitCmdByOpts(vector<string> &OptsArgs);
+    string FormatTextColumns(const string &Str1,const string &Str2,int LeftWidth,int RightWidth);
     void GenHelpInfo(bool isCalled);
 public:
     bool BuildCheck(void);
@@ -198,16 +195,19 @@ public:
     void SetApi(void (*API)(vector<vector<string>>));
     void SetBrief(const string &Brief);
 
-    bool ExistCmd (const string &Cmd);
-    int  CmdIndex (const string &Cmd);
-    void AppendCmd(const string &Cmd);
+    int  CmdsCount (void);
+    bool ExistCmd  (const string &Cmd);
+    int  IndexOfCmd(const string &Cmd);
+    void AppendCmd (const string &Cmd);
+    string CmdAt(int Index);
 
-    bool ExistOpt (const string &OptName);
-    int  OptIndex (const string &OptName);
-    void AppendOpt(OptFmtData Opt);
+    int  OptsCount (void);
+    bool ExistOpt  (const string &OptName);
+    int  IndexOfOpt(const string &OptName);
+    void AppendOpt (OptionData Opt);
+    OptionData OptAt(int Index);
 
-    vector<string>
-        GetAllOpts(void);
+    vector<string> GetAllOpts(void);
 };
 
 ////////////////////---------------------------------------
@@ -221,42 +221,57 @@ public:
     FData(void);
     virtual ~FData(void) override;
 protected:
+///
+/// NONE FOR THIS CLASS
+///
+private:
     int s_ResCmdNum;              // Number of reserved command.
     int s_ResApiNum;              // Number of reserved api can.
     string s_CmdIn;               // Command inputted by user.
-    string s_RunSign;             // Runing sign of CmdForge.
     string s_MainCmd;             // Main command.
-    vector<int> s_CmdApiTable;    // Command api table.
+    vector<int> s_CmdToApiMap;    // Command api table.
     vector<string> s_CmdIndex;    // Command index.
                                   // Command index sorted by alphabet.
     vector<string> s_SortedCmdIndex;
     vector<string> s_CmdOptsArgs; // Command split into command, options, arguments.
     vector<ApiCan> s_ApiCanPool;  // Api can pool.
 
-    vector<string>
-         SplitCmd(string &CmdIn);
-    void SortStrList(vector<string> &SourceStrList);
-private:
     void Init(void);
-
     static bool CompareStrAlpha(const string &Str1,const string &Str2);
+
+    vector<string> SplitCmdBySpace(string &CmdIn); 
     void SortCmdIndex(void);
 public:
+    static vector<string> SplitStrBySpace(string &Str);
+    static void SortStrListByAlpha(vector<string> &StrList);
+
+    void   SetResCmdNum(int ResCmdNum);
+    int    GetResCmdNum(void);
+    void   SetResApiNum(int ResApiNum);
+    int    GetResApiNum(void);
+
     void   SetCmdIn(const string &CmdIn);
     string GetCmdIn(void);
     void   SetMainCmd(const string &MainCmd);
     string GetMainCmd(void);
+    void   AddMapping(int CmdIndex,int ApiIndex);
+    int    GetMapping(int CmdIndex);
+    vector<string> GetSortedCmdIndex(void);
     void   SetCmdOptsArgs(vector<string> &CmdOptsArgs);
-    vector<string>
-           GetCmdOptsArgs(void);
+    vector<string> GetCmdOptsArgs(void);
 
-    bool ExistCmd (const string &Cmd);
-    int  CmdIndex (const string &Cmd);
-    void AppendCmd(const string &Cmd);
+    int  CmdsCount (void);
+    bool ExistCmd  (const string &Cmd);
+    int  IndexOfCmd(const string &Cmd);
+    void AppendCmd (const string &Cmd);
+    string CmdAt(int Index);
 
-    bool ExistApiCan (ApiCan ApiCan);
-    int  ApiCanIndex (ApiCan ApiCan);
-    void AppendApiCan(ApiCan ApiCan);
+    int  ApiCanCount  (void);
+    bool ExistApiCan  (ApiCan ApiCan);
+    int  IndexOfApiCan(ApiCan ApiCan);
+    void AppendApiCan (ApiCan ApiCan);
+    ApiCan *ApiCanAt(int Index);
+    ApiCan *ApiCanAt(const string &Cmd);
 };
 
 ////////////////////---------------------------------------
@@ -278,9 +293,11 @@ private:
 /// NONE FOR THIS CLASS
 ///
 public:
-    bool CheckHooks(void);
+    bool BuildCheckHooks(void);
     void HookApi(const string &ExistCmd,const string &NewCmd);
     void HookApi(const string &Cmd,void (*API)(vector<vector<string>>));
+    void HookBrief(const string &Cmd,const string &Brief);
+    void HookOpt  (const string &Cmd,const OptionData &Opt);
 };
 
 ////////////////////---------------------------------------
@@ -320,9 +337,10 @@ public:
     ForgeHwnd(int argc,char *argv[]);
     virtual ~ForgeHwnd(void) override;
 protected:
+    string s_RunSign;             // Runing sign of CmdForge.
     int s_CLIMode;                // Mode of CLI (0:One-Line,1:Interact).
     int s_CurCmdPos;              // Current position of history commands.
-    CLICfgData s_Cfg;             // CLI configuration data.
+    CLIConfigData s_Cfg;          // CLI configuration data.
     deque<string> s_HistoryCmd;   // History command stored.
 #ifdef  _WIN32
     DWORD s_Original;             // Original setting of windows terminal.
@@ -337,8 +355,8 @@ protected:
     void CompleteCmd(string &CurCmd);
     void AutoCompleteCmd(string &CurCmd);
 
-    void InputCmdTask(CmdExchangeData *Data);
-    void DetecKeyTask(CmdExchangeData *Data);
+    void InputCmdTask(RunTimeCmdData *Data);
+    void DetecKeyTask(RunTimeCmdData *Data);
 
     void APIhelp   (vector<string> &OptsArgs) override;
     void APIversion(vector<string> &OptsArgs) override;
@@ -356,21 +374,20 @@ private:
     void GenHelpInfo(void);
     void GenVersionInfo(void);
 public:
-    void SetCLICfg(CLICfgData Cfg);
+    void SetCLICfg(CLIConfigData Cfg);
     void SetCLIMode(int Mode);
     void SetCLIVersion(const string &Version);
     void SetCLIMainCmd(const string &MainCmd);
 
-    OptFmtData
-         GenOptFmt(const string &LongFmt,const string &ShortFmt,const string &Brief,const vector<ArgFmtData> &Args,int OptType);
+    OptionData GenOptFmt(const string &LongFmt,const string &ShortFmt,const string &Brief,const vector<ArgumentData> &Args,int OptType);
 
     void SetCmdBrief(const string &Cmd,const string &Brief);
-    void SetCmdOpt  (const string &Cmd,const OptFmtData &CmdOpt);
-    void SetCmdOpts (const string &Cmd,const vector<OptFmtData> &CmdOpts);
+    void SetCmdOpt  (const string &Cmd,const OptionData &CmdOpt);
+    void SetCmdOpts (const string &Cmd,const vector<OptionData> &CmdOpts);
 
     void HookCmdApi(const string &ExistCmd,const string &NewCmd);
     void HookCmdApi(const string &Cmd,void (*API)(vector<vector<string>>));
-    void HookCmdApi(const string &Cmd,const string &Brief,const vector<OptFmtData> &Opts,void (*API)(vector<vector<string>>));
+    void HookCmdApi(const string &Cmd,const string &Brief,const vector<OptionData> &Opts,void (*API)(vector<vector<string>>));
 
     int  MainLoop(const string &RunSign=DEFT_RSIGN);
 };
