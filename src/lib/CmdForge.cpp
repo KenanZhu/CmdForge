@@ -20,7 +20,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // ----------------------------------------------------------------------------
 //  DATE OF FIRST EDIT: 2025-02-26
-//  VERSION OF LIB    : 1.0.9
+//  VERSION OF LIB    : 1.1.1
 // ----------------------------------------------------------------------------
 
 #include "CmdForge.h"
@@ -162,7 +162,7 @@ ApiCan::~ApiCan(void)
 }
 ///    PROTECTED :
 /////////////////////////////////////////////////
-bool ApiCan::PreParserCheck(vector<string> &OptsArgs)
+bool ApiCan::ParserCheckPre(vector<string> &OptsArgs)
 {
     int i,Opts;
     bool State;
@@ -193,7 +193,7 @@ bool ApiCan::PreParserCheck(vector<string> &OptsArgs)
     return State;
 }
 
-bool ApiCan::PostParserCheck(vector<vector<string>> &OptArgs)
+bool ApiCan::ParserCheckPost(vector<vector<string>> &OptArgs)
 {
     bool State;
     int i,Index,ExpArgs,ActArgs,ExpOpts,ActOpts,RepeatTimes,Size,Opts;
@@ -236,7 +236,7 @@ bool ApiCan::PostParserCheck(vector<vector<string>> &OptArgs)
         RepeatTimes=(int)(InputOpts.count(s_Opts[i].LongFmt)+InputOpts.count(s_Opts[i].ShortFmt));
         if (RepeatTimes>1) {
             this->StdMsg("got "+to_string(RepeatTimes)+" [-opt](s) '"+s_Opts[i].LongFmt+"/"+s_Opts[i].ShortFmt+"' in command, but it is unrepeatable",0);
-            continue;
+            State=false;
         }
     }
 
@@ -248,7 +248,7 @@ bool ApiCan::PostParserCheck(vector<vector<string>> &OptArgs)
 
     // 1.
     for (i=0;i<Size;i++) {
-        Index=this->OptIndex(OptArgs[i][0]);
+        Index=this->IndexOfOpt(OptArgs[i][0]);
 
         ExpArgs=(int)s_Opts[Index].Args.size();
         ActArgs=(int)OptArgs[i].size()-1;
@@ -260,7 +260,7 @@ bool ApiCan::PostParserCheck(vector<vector<string>> &OptArgs)
     return State;
 }
 
-bool ApiCan::BasicBuildCheck(void)
+bool ApiCan::BuildCheckBasic(void)
 {
     bool State;
     int Opts,Cmds;
@@ -270,45 +270,73 @@ bool ApiCan::BasicBuildCheck(void)
     Opts=(int)s_Opts.size();
 
     if (s_API==nullptr) {
-        this->StdMsg("no api was hooked in a api can",3);
+        this->StdMsg("no api was hooked in a api can",2);
         return State=false;
     }
     else if (Cmds==0) {
-        this->StdMsg("no [-cmd] was hooked in a api can",3);
+        this->StdMsg("no [-cmd] was hooked in a api can",2);
         return State=false;
     }
     else if (Opts==0) {
-        this->StdMsg("no [-opt] include in [-cmd] '"+s_Cmds[0]+"'",2);
+        this->StdMsg("no [-opt] include in [-cmd] '"+s_Cmds[0]+"'",1);
         return State=true;
     }
     return State;
 }
 
-bool ApiCan::OptBuildCheck(void)
+bool ApiCan::BuildCheckCmds(void)
 {
     bool State;
-    int i,Opts,ExpDefault,ActDefault;
+    int i,j,Cmds;
+
+    State=true;
+    Cmds=(int)s_Cmds.size();
+
+    for (i=0;i<Cmds;i++) if (s_Cmds[i].empty()) {
+        this->StdMsg("an empty name of a command was added",2);
+        return State=false;
+    }
+    for (i=0;i<Cmds;i++) for (j=i;j<Cmds;j++) {
+        if (s_Cmds[i]==s_Cmds[j]) {
+            this->StdMsg("duplicate [-cmd] '"+s_Cmds[i]+"'");
+            State=false;
+        }
+    }
+    return State;
+}
+
+bool ApiCan::BuildCheckOpts(void)
+{
+    bool State;
+    int i,j,Opts,ExpDftCount,ActDftCount;
     
     State=true;
-    ExpDefault=1;
-    ActDefault=0;
+    ExpDftCount=1;
+    ActDftCount=0;
     Opts=(int)s_Opts.size();
 
     for (i=0;i<Opts;i++) {
         if (s_Opts[i].LongFmt.empty()&&s_Opts[i].ShortFmt.empty()) {
             this->StdMsg("an empty name of a option was added in [-cmd] '"+s_Cmds[0]+"'",2);
+            State=false;
         }
     }
-    for (i=0;i<Opts;i++) if (s_Opts[i].OptType&OPTYPE_D) ActDefault++;
+    for (i=0;i<Opts;i++) if (s_Opts[i].OptType&OPTYPE_D) ActDftCount++;
 
-    if (ActDefault>ExpDefault) {
-        this->StdMsg("[-cmd] '"+s_Cmds[0]+"' expect only 1 default [-opt], but you set "+to_string(ActDefault)+" default [-opt]",2);
-        return State=false;
+    if (ActDftCount>ExpDftCount) {
+        this->StdMsg("[-cmd] '"+s_Cmds[0]+"' expect only 1 default [-opt], but you set "+to_string(ActDftCount)+" default [-opt]",2);
+        State=false;
+    }
+    for (i=0;i<Opts;i++) for (j=i+1;j<Opts;j++) {
+        if (s_Opts[i].LongFmt==s_Opts[j].LongFmt||s_Opts[i].ShortFmt==s_Opts[j].ShortFmt) {
+            this->StdMsg("duplicate [-opt] '"+s_Opts[i].LongFmt+"/"+s_Opts[i].ShortFmt+"' in [-cmd] '"+s_Cmds[0]+"'",2);
+            State=false;
+        }
     }
     return State;
 }
 
-bool ApiCan::ArgBuildCheck(void)
+bool ApiCan::BuildCheckArgs(void)
 {
     bool State;
     int i,Opts;
@@ -335,13 +363,14 @@ void ApiCan::Init(void)
     return;
 }
 
-vector<vector<string>> ApiCan::SplitOpts(vector<string> &OptsArgs)
+vector<vector<string>> ApiCan::SplitCmdByOpts(vector<string> &OptsArgs)
 {
     vector<string> TempOptArg;
     vector<vector<string>> TempOptArgs;
     int i,j,k,Size;
         
     Size=(int)OptsArgs.size();
+
     for (i=0;i<Size;i++) {
         if (this->ExistOpt(OptsArgs[i])) {
             TempOptArg.push_back(OptsArgs[i]);
@@ -372,6 +401,7 @@ string ApiCan::FormatTextColumns(const string &Str1,const string &Str2,int LeftW
 
     TempStr1=Str1;
     TempStr2=Str2;
+
     while ((int)TempStr1.size()>LeftWidth+(int)RightWidth/10) {
 
         Next=TempStr1.find(' ',LeftWidth);
@@ -427,6 +457,7 @@ void ApiCan::GenHelpInfo(bool isCalled)
 
     TempMsg.clear();
     TempMsg=s_Cmds[0];
+
     for (i=1;i<Cmds;i++) TempMsg+=", "+s_Cmds[i];
 
     if (!isCalled) TempMsg=this->FormatTextColumns(TempMsg,s_Brief,20,70);
@@ -464,9 +495,10 @@ bool ApiCan::BuildCheck(void)
     bool State;
         
     State=true;
-    if (!this->BasicBuildCheck()) return State=false;
-    else if (!this->OptBuildCheck()) return State=false;
-    else if (!this->ArgBuildCheck()) return State=false;
+
+    if (!this->BuildCheckBasic()) return State=false;
+    else if (!this->BuildCheckOpts()) return State=false;
+    else if (!this->BuildCheckArgs()) return State=false;
     
     return State;
 }
@@ -492,14 +524,14 @@ void ApiCan::API(vector<string> CmdOptsArgs)
     OptsArgs=CmdOptsArgs;
 
     // Check the original command.
-    if (!this->PreParserCheck(OptsArgs)) { 
+    if (!this->ParserCheckPre(OptsArgs)) { 
         s_OptArgs.clear();
         return;
     }
-    s_OptArgs=this->SplitOpts(OptsArgs);
+    s_OptArgs=this->SplitCmdByOpts(OptsArgs);
 
     // Check the post-process command.
-    if (!this->PostParserCheck(s_OptArgs)) {
+    if (!this->ParserCheckPost(s_OptArgs)) {
         s_OptArgs.clear();
         return;
     }
@@ -524,19 +556,25 @@ void ApiCan::SetBrief(const string &Brief)
     return;
 }
 
+int ApiCan::CmdsCount(void)
+{
+    return (int)s_Cmds.size();
+}
+
 bool ApiCan::ExistCmd(const string &Cmd)
 {
-    if (this->CmdIndex(Cmd)!=-1) return true;
+    if (this->IndexOfCmd(Cmd)!=-1) return true;
 
     return false;
 }
 
-int ApiCan::CmdIndex(const string &Cmd)
+int ApiCan::IndexOfCmd(const string &Cmd)
 {
     int i,Index,Cmds;
     
     Index=-1;
     Cmds=(int)s_Cmds.size();
+
     for (i=0;i<Cmds;i++) if (s_Cmds[i]==Cmd) return Index=i;
 
     return Index;
@@ -544,24 +582,37 @@ int ApiCan::CmdIndex(const string &Cmd)
 
 void ApiCan::AppendCmd(const string &Cmd)
 {
-    if (!Cmd.empty()&&!this->ExistCmd(Cmd)) s_Cmds.push_back(Cmd);
+    s_Cmds.push_back(Cmd);
 
     return;
 }
 
+string ApiCan::CmdAt(int Index)
+{
+    if (Index<0||Index>=(int)s_Cmds.size()) return string();
+
+    return s_Cmds[Index];
+}
+
+int ApiCan::OptsCount(void)
+{
+    return (int)s_Opts.size();
+}
+
 bool ApiCan::ExistOpt(const string &OptName)
 {
-    if (this->OptIndex(OptName)!=-1) return true;
+    if (this->IndexOfOpt(OptName)!=-1) return true;
 
     return false;
 }
 
-int ApiCan::OptIndex(const string &OptName)
+int ApiCan::IndexOfOpt(const string &OptName)
 {
     int i,Index,Opts;
     
     Index=-1;
     Opts=(int)s_Opts.size();
+
     for (i=0;i<Opts;i++) {
         if (s_Opts[i].LongFmt==OptName) return Index=i;
         else if (s_Opts[i].ShortFmt==OptName) return Index=i;
@@ -569,29 +620,25 @@ int ApiCan::OptIndex(const string &OptName)
     return Index;
 }
 
-void ApiCan::AppendOpt(OptFmtData Opt)
+void ApiCan::AppendOpt(OptionData Opt)
 {
-    int Opts;
-
-    Opts=(int)s_Opts.size();
-    if (this->ExistOpt(Opt.LongFmt)) {
-        this->StdMsg("you already have [-opt] '"+Opt.LongFmt+"' in [-cmd] '"+s_Cmds[0]+"'",2);
-        return;
-    }
-    else if (this->ExistOpt(Opt.ShortFmt)) {
-        this->StdMsg("you already have [-opt] '"+Opt.ShortFmt+"' in [-cmd] '"+s_Cmds[0]+"'",2);
-        return;
-    }
     s_Opts.push_back(Opt);
 
     return;
+}
+
+OptionData ApiCan::OptAt(int Index)
+{
+    if (Index<0||Index>=(int)s_Opts.size()) return OptionData();
+
+    return s_Opts[Index];
 }
 
 vector<string> ApiCan::GetAllOpts(void)
 {
     vector<string> TempOpts;
 
-    for (const OptFmtData &Opt:s_Opts) {
+    for (const OptionData &Opt:s_Opts) {
         TempOpts.push_back(Opt.LongFmt);
         TempOpts.push_back(Opt.ShortFmt);
     }
@@ -611,143 +658,20 @@ FData::~FData()
 }
 ///    PROTECTED :
 /////////////////////////////////////////////////
-
-///
-///    NONE FOR THIS CLASS
-///
-
-///    PUBLIC :
-/////////////////////////////////////////////////
-void FData::SetCmdIn(const string &CmdIn)
+vector<string> FData::SplitCmdBySpace(string &CmdIn)
 {
-    vector<string> TempOptArgs;
-
-    s_CmdIn=CmdIn;
-    TempOptArgs=this->SplitCmd(s_CmdIn);
-    this->SetCmdOptsArgs(TempOptArgs);
-
-    return;
-}
-
-string FData::GetCmdIn(void)
-{
-    return s_CmdIn;
-}
-
-void FData::SetMainCmd(const string &MainCmd)
-{
-    if (!MainCmd.empty()) s_MainCmd=MainCmd;
-
-    return;
-}
-
-string FData::GetMainCmd(void)
-{
-    return s_MainCmd;
-}
-
-void FData::SetCmdOptsArgs(vector<string> &CmdOptsArgs)
-{
-    if (!CmdOptsArgs.empty()) s_CmdOptsArgs=CmdOptsArgs;
-
-    return;
-}
-
-vector<string> FData::GetCmdOptsArgs(void)
-{
-    return s_CmdOptsArgs;
-}
-
-vector<string> FData::SplitCmd(string &CmdIn)
-{
-    char Sign;
-    int i,j,Size;
-    vector<string> CmdSplit;
-
-    Sign=' ';
-    Size=(int)CmdIn.size();
-    for (i=0;i<Size;i++) {
-        if (CmdIn[i]==Sign) continue;
-        for (j=i;j<Size;j++) {
-            if (CmdIn[j]!=Sign&&j+1!=Size) continue;
-            if (CmdIn[j]==Sign) j-=1;
-            else if (j+1==Size) j+=0;
-            CmdSplit.push_back(CmdIn.substr(i,(j-i)+1));
-            i=j; break;
-        }
-    }
-    return CmdSplit;
-}
-
-bool FData::ExistCmd(const string &Cmd)
-{
-    if (this->CmdIndex(Cmd)!=-1) return true;
-
-    return false;
-}
-
-int FData::CmdIndex(const string &Cmd)
-{
-    int i,Index,Cmds;
-    
-    Index=-1;
-    Cmds=(int)s_CmdIndex.size();
-    for (i=0;i<Cmds;i++) {
-        if (s_CmdIndex[i]==Cmd) {
-            return Index=i;
-        }
-    }
-    return Index;
-}
-
-void FData::AppendCmd(const string &Cmd)
-{
-    if (this->ExistCmd(Cmd)) return;
-    s_CmdIndex.push_back(Cmd);
-    this->SortCmdIndex();
-
-    return;
-}
-
-bool FData::ExistApiCan(ApiCan ApiCan)
-{
-    if (this->ApiCanIndex(ApiCan)!=-1) return true;
- 
-    return false;
-}
-
-int FData::ApiCanIndex(ApiCan ApiCan)
-{
-    int i,Index,Apis;
-    
-    Index=-1;
-    Apis=(int)s_ApiCanPool.size();
-    for (i=0;i<Apis;i++) {
-        if (s_ApiCanPool[i].API()==ApiCan.API()) {
-            return Index=i;
-        }
-    }
-    return Index;
-}
-
-void FData::AppendApiCan(ApiCan ApiCan)
-{
-    if (this->ExistApiCan(ApiCan)) return;
-    s_ApiCanPool.push_back(ApiCan);
-
-    return;
+    return this->SplitStrBySpace(CmdIn);
 }
 ///    PRIVATE :
 /////////////////////////////////////////////////
 void FData::Init(void)
 {
     s_CmdIn.clear();
-    s_RunSign.clear();
     s_MainCmd.clear();
     s_CmdIndex.clear();
     s_CmdOptsArgs.clear();
     s_ApiCanPool.clear();
-    s_CmdApiTable.clear();
+    s_CmdToApiMap.clear();
     s_ResCmdNum=0;
 
     return;
@@ -774,16 +698,214 @@ bool FData::CompareStrAlpha(const string &Str1,const string &Str2)
     }
 }
 
-void FData::SortStrList(vector<string>& SourceStrList)
-{
-    sort(SourceStrList.begin(),SourceStrList.end(),&FData::CompareStrAlpha);
-}
-
 void FData::SortCmdIndex(void)
 {
     s_SortedCmdIndex=s_CmdIndex;
-    sort(s_SortedCmdIndex.begin(),s_SortedCmdIndex.end(),&FData::CompareStrAlpha);
+    this->SortStrListByAlpha(s_SortedCmdIndex);
 }
+///    PUBLIC :
+/////////////////////////////////////////////////
+vector<string> FData::SplitStrBySpace(string &Str)
+{
+    char Sign;
+    int i,j,Size;
+    vector<string> CmdSplit;
+
+    Sign=' ';
+    Size=(int)Str.size();
+
+    for (i=0;i<Size;i++) {
+        if (Str[i]==Sign) continue;
+        for (j=i;j<Size;j++) {
+            if (Str[j]!=Sign&&j+1!=Size) continue;
+            if (Str[j]==Sign) j-=1;
+            else if (j+1==Size) j+=0;
+            CmdSplit.push_back(Str.substr(i,(j-i)+1));
+            i=j; break;
+        }
+    }
+    return CmdSplit;
+}
+
+void FData::SortStrListByAlpha(vector<string> &StrList)
+{
+    sort(StrList.begin(),StrList.end(),&FData::CompareStrAlpha);
+}
+
+void FData::SetResCmdNum(int ResCmdNum)
+{
+    if (ResCmdNum<0) return;
+    s_ResCmdNum=ResCmdNum;
+}
+
+inline int FData::GetResCmdNum(void) { return s_ResCmdNum; }
+
+void FData::SetResApiNum(int ResApiNum)
+{
+    if (ResApiNum<0) return;
+    s_ResApiNum=ResApiNum;
+}
+
+inline int FData::GetResApiNum(void) { return s_ResApiNum; }
+
+void FData::SetCmdIn(const string &CmdIn)
+{
+    vector<string> TempOptArgs;
+
+    s_CmdIn=CmdIn;
+    TempOptArgs=this->SplitCmdBySpace(s_CmdIn);
+    if (TempOptArgs.empty()) {
+        s_CmdIn.clear();
+        s_CmdOptsArgs.clear();
+    }
+    this->SetCmdOptsArgs(TempOptArgs);
+
+    return;
+}
+
+string FData::GetCmdIn(void)
+{
+    return s_CmdIn;
+}
+
+void FData::SetMainCmd(const string &MainCmd)
+{
+    if (!MainCmd.empty()) s_MainCmd=MainCmd;
+
+    return;
+}
+
+string FData::GetMainCmd(void)
+{
+    return s_MainCmd;
+}
+
+void FData::AddMapping(int CmdIndex,int ApiIndex)
+{
+    if ((int)s_CmdToApiMap.size()<=CmdIndex) s_CmdToApiMap.resize(CmdIndex+1,-1);
+
+    s_CmdToApiMap[CmdIndex]=ApiIndex;
+}
+
+int FData::GetMapping(int CmdIndex)
+{
+    if (CmdIndex<0) return -1;
+
+    return (CmdIndex<(int)s_CmdToApiMap.size())
+        ?s_CmdToApiMap[CmdIndex]
+        :-1;
+}
+
+vector<string> FData::GetSortedCmdIndex(void)
+{
+    return s_SortedCmdIndex;
+}
+
+void FData::SetCmdOptsArgs(vector<string> &CmdOptsArgs)
+{
+    if (!CmdOptsArgs.empty()) s_CmdOptsArgs=CmdOptsArgs;
+
+    return;
+}
+
+vector<string> FData::GetCmdOptsArgs(void)
+{
+    return s_CmdOptsArgs;
+}
+
+int FData::CmdsCount(void)
+{
+    return (int)s_CmdIndex.size();
+}
+
+bool FData::ExistCmd(const string &Cmd)
+{
+    if (this->IndexOfCmd(Cmd)!=-1) return true;
+
+    return false;
+}
+
+int FData::IndexOfCmd(const string &Cmd)
+{
+    int i,Index,Cmds;
+    
+    Index=-1;
+    Cmds=this->CmdsCount();
+
+    for (i=0;i<Cmds;i++) {
+        if (s_CmdIndex[i]==Cmd) {
+            return Index=i;
+        }
+    }
+    return Index;
+}
+
+void FData::AppendCmd(const string &Cmd)
+{
+    s_CmdIndex.push_back(Cmd);
+    this->SortCmdIndex();
+
+    return;
+}
+
+string FData::CmdAt(int Index)
+{
+    if (Index<0||Index>=(int)s_CmdIndex.size()) return string();
+
+    return s_CmdIndex[Index];
+}
+
+int FData::ApiCanCount(void)
+{
+    return (int)s_ApiCanPool.size();
+}
+
+bool FData::ExistApiCan(ApiCan ApiCan)
+{
+    if (this->IndexOfApiCan(ApiCan)!=-1) return true;
+ 
+    return false;
+}
+
+int FData::IndexOfApiCan(ApiCan ApiCan)
+{
+    int i,Index,Apis;
+    
+    Index=-1;
+    Apis=this->ApiCanCount();
+
+    for (i=0;i<Apis;i++) {
+        if (s_ApiCanPool[i].API()==ApiCan.API()) {
+            return Index=i;
+        }
+    }
+    return Index;
+}
+
+void FData::AppendApiCan(ApiCan ApiCan)
+{
+    s_ApiCanPool.push_back(ApiCan);
+
+    return;
+}
+
+ApiCan* FData::ApiCanAt(int Index)
+{
+    if (Index<0||Index>=this->ApiCanCount()) return nullptr;
+
+    return &s_ApiCanPool[Index];
+}
+
+ApiCan *FData::ApiCanAt(const string &Cmd)
+{
+    int Index;
+
+    if ((Index=this->IndexOfCmd(Cmd))==-1) return nullptr;
+    Index=s_CmdToApiMap[Index];
+
+    return &s_ApiCanPool[Index];
+}
+
 /////////////////////////////////////////////////////////////////////
 ///    CLASS : FBuilder
 /////////////////////////////////////////////////////////////////////
@@ -808,16 +930,17 @@ void FData::SortCmdIndex(void)
 
 ///    PUBLIC :
 /////////////////////////////////////////////////
-bool FBuilder::CheckHooks(void)
+bool FBuilder::BuildCheckHooks(void)
 {
     int i,Cmds;
     bool State;
 
     State=true;
-    Cmds=(int)s_CmdIndex.size();
-    for (i=s_ResCmdNum;i<Cmds;i++) {
-        if (s_ApiCanPool[s_CmdApiTable[i]].API()==nullptr) {
-            this->StdMsg("you are hooking [-cmd] '"+s_CmdIndex[i]+"' with a invalid <ApiCan.API() -> null>",3);
+    Cmds=this->CmdsCount();
+
+    for (i=this->GetResCmdNum();i<Cmds;i++) {
+        if (this->ApiCanAt(this->CmdAt(i))->API()==nullptr) {
+            this->StdMsg("you are hooking [-cmd] '"+this->CmdAt(i)+"' with a invalid <ApiCan.API() -> null>",3);
             State=false;
         }
     }
@@ -830,7 +953,7 @@ void FBuilder::HookApi(const string &ExistCmd,const string &NewCmd)
 {
     int Index;
 
-    Index=this->CmdIndex(ExistCmd);
+    Index=this->IndexOfCmd(ExistCmd);
     if (Index==-1) {
         this->StdMsg("[-cmd] '"+ExistCmd+"' is not exist, you can't hook new command.",2);
         return;
@@ -840,9 +963,9 @@ void FBuilder::HookApi(const string &ExistCmd,const string &NewCmd)
         return;
     }
     this->AppendCmd(NewCmd);
-    Index=s_CmdApiTable[Index];
-    s_ApiCanPool[Index].AppendCmd(NewCmd);
-    s_CmdApiTable.push_back(Index);
+    Index=this->GetMapping(Index);
+    this->ApiCanAt(Index)->AppendCmd(NewCmd);
+    this->AddMapping(this->IndexOfCmd(NewCmd),Index);
 }
 
 void FBuilder::HookApi(const string &Cmd,void (*API)(vector<vector<string>>))
@@ -858,13 +981,35 @@ void FBuilder::HookApi(const string &Cmd,void (*API)(vector<vector<string>>))
     TempCan.SetApi(API);
     TempCan.AppendCmd(Cmd);
     if (this->ExistApiCan(TempCan)&&API) {
-        Index=this->ApiCanIndex(TempCan);
-        s_ApiCanPool[Index].AppendCmd(Cmd);
-        s_CmdApiTable.push_back(Index);
+        Index=this->IndexOfApiCan(TempCan);
+        this->ApiCanAt(Index)->AppendCmd(Cmd);
+        this->AddMapping(this->IndexOfCmd(Cmd),Index);
         return;
     }
-    s_ApiCanPool.push_back(TempCan);
-    s_CmdApiTable.push_back((int)s_ApiCanPool.size()-1);
+    this->AppendApiCan(TempCan);
+    this->AddMapping(this->IndexOfCmd(Cmd),this->ApiCanCount()-1);
+
+    return;
+}
+
+void FBuilder::HookBrief(const string &Cmd, const string &Brief)
+{
+    if (this->IndexOfCmd(Cmd)==-1) {
+        this->StdMsg("You are setting brief to an unhooked [-cmd] '"+Cmd+"'",3);
+        return;
+    }
+    this->ApiCanAt(Cmd)->SetBrief(Brief);
+
+    return;
+}
+
+void FBuilder::HookOpt(const string &Cmd, const OptionData &Opt)
+{
+    if (this->IndexOfCmd(Cmd)==-1) {
+        this->StdMsg("You are setting options to an unhooked [-cmd] '"+Cmd+"'",3);
+        return;
+    }
+    this->ApiCanAt(Cmd)->AppendOpt(Opt);
 
     return;
 }
@@ -932,7 +1077,7 @@ void FParser::ParserCmd(void)
         this->StdMsg("invalid command, no [-cmd]",0);
     }                                       
     // REJECT: no [-cmd] matched.
-    else if ((Index=this->CmdIndex(TempCmdOptsArgs[1]))<0) {
+    else if ((Index=this->IndexOfCmd(TempCmdOptsArgs[1]))<0) {
         this->StdMsg("invalid command, unknow [-cmd] '"+TempCmdOptsArgs[1]+"'",0);
     }
     // ACCEPT
@@ -946,13 +1091,15 @@ void FParser::ForkApi(const string &Cmd)
 {
     int Index;
 
-    Index=this->CmdIndex(Cmd);
-    Index=s_CmdApiTable[Index];
-    if (Index<s_ResApiNum) this->ForkReserved(Index);
-    else s_ApiCanPool[Index].API(s_CmdOptsArgs);
+    Index=this->IndexOfCmd(Cmd);
+    Index=this->GetMapping(Index);
+
+    if (Index<this->GetResApiNum()) this->ForkReserved(Index);
+    else this->ApiCanAt(Index)->API(this->GetCmdOptsArgs());
 
     return;
 }
+
 /////////////////////////////////////////////////////////////////////
 ///    CLASS : ForgeHwnd
 /////////////////////////////////////////////////////////////////////
@@ -1021,15 +1168,15 @@ void ForgeHwnd::ResetTerminal(void)
     return;
 }
 
-void ForgeHwnd::Complete(string &SourceStr, vector<string> &TargetStrList)
+void ForgeHwnd::Complete(string &Str,vector<string> &StrList)
 {
     int Index;
-    string FilteredSourceStr;
-    string FilteredTargetStr;
-    vector<string> MatchedTargetStrList;
+    string FiltSrcStr;
+    string FiltTgtStr;
+    vector<string> MatchStrList;
 
     // Filter out non-alphabetic characters from SourceStr.
-    auto FilterAlpha=[](const string &Str)
+    auto AlphaFilter=[](const string &Str)
     {
         string Res;
 
@@ -1038,50 +1185,50 @@ void ForgeHwnd::Complete(string &SourceStr, vector<string> &TargetStrList)
         }
         return Res;
     };
-    FilteredSourceStr=FilterAlpha(SourceStr);
-    if (FilteredSourceStr.empty()) return;
+    FiltSrcStr=AlphaFilter(Str);
+    if (FiltSrcStr.empty()) return;
 
     // Find all the string in TargetStrList that partly or totally
     // match with the filtered SourceStr.
     Index=0;
-    for (string &TargetStr:TargetStrList) {
+    for (string &TargetStr:StrList) {
         Index++;
-        FilteredTargetStr=FilterAlpha(TargetStr);
-        if (FilteredTargetStr.compare(0,FilteredSourceStr.size(),FilteredSourceStr)==0||
-            FilteredSourceStr.compare(0,FilteredTargetStr.size(),FilteredTargetStr)==0) {
-            if (FilteredSourceStr==FilteredTargetStr) {
-                MatchedTargetStrList.clear();
-                MatchedTargetStrList.push_back(TargetStr);
+        FiltTgtStr=AlphaFilter(TargetStr);
+        if (FiltTgtStr.compare(0,FiltSrcStr.size(),FiltSrcStr)==0||
+            FiltSrcStr.compare(0,FiltTgtStr.size(),FiltTgtStr)==0) {
+            if (FiltSrcStr==FiltTgtStr) {
+                MatchStrList.clear();
+                MatchStrList.push_back(TargetStr);
                 break;
             }
-            MatchedTargetStrList.push_back(TargetStr);
+            MatchStrList.push_back(TargetStr);
         }
     }
-    if (MatchedTargetStrList.empty()) return;
+    if (MatchStrList.empty()) return;
 
-    if ((int)MatchedTargetStrList.size()==1&&MatchedTargetStrList[0]==SourceStr) {
-        if (Index<(int)TargetStrList.size()) {
-            SourceStr=TargetStrList[Index];
+    if ((int)MatchStrList.size()==1&&MatchStrList[0]==Str) {
+        if (Index<(int)StrList.size()) {
+            Str=StrList[Index];
         } else {
-            SourceStr=TargetStrList[0];
+            Str=StrList[0];
         }
         return;
     }
-    SourceStr=MatchedTargetStrList[0];
+    Str=MatchStrList[0];
 
     return;
 }
 
-void ForgeHwnd::CompleteOpt(string &CurCmd, string &CurOpt)
+void ForgeHwnd::CompleteOpt(string &CurCmd,string &CurOpt)
 {
     int Index;
     vector<string> Opts;
 
-    Index=this->CmdIndex(CurCmd);
+    Index=this->IndexOfCmd(CurCmd);
     if (Index==-1) return;
-    Index=s_CmdApiTable[Index];
-    Opts=s_ApiCanPool[Index].GetAllOpts();
-    this->SortStrList(Opts);
+    Index=this->GetMapping(Index);
+    Opts=this->ApiCanAt(Index)->GetAllOpts();
+    FData::SortStrListByAlpha(Opts);
 
     this->Complete(CurOpt,Opts);
 
@@ -1090,7 +1237,10 @@ void ForgeHwnd::CompleteOpt(string &CurCmd, string &CurOpt)
 
 void ForgeHwnd::CompleteCmd(string &CurCmd)
 {
-    this->Complete(CurCmd,s_SortedCmdIndex);
+    vector<string> Cmds;
+
+    Cmds=this->GetSortedCmdIndex();
+    this->Complete(CurCmd,Cmds);
     
     return;
 }
@@ -1101,18 +1251,15 @@ void ForgeHwnd::AutoCompleteCmd(string &CurCmd)
     string TempCmd;
     vector<string> TempCmds;
     
-    Cmds=(int)s_CmdIndex.size();
+    Cmds=this->CmdsCount();
+    TempCmds=FData::SplitStrBySpace(CurCmd);
 
     // COMP : no input, complete the main command.
-    if (CurCmd.empty()) {
-        CurCmd=this->GetMainCmd();
-        return;
+    if (TempCmds.empty()) {
+        TempCmds.push_back(this->GetMainCmd());
     }
-    TempCmd=CurCmd;
-    TempCmds=this->SplitCmd(TempCmd);
-
     // COMP : complete the main command.
-    if ((int)TempCmds.size()<=1) {
+    else if ((int)TempCmds.size()<=1) {
         TempCmds[0]=this->GetMainCmd();
     }
     // COMP : complete the sub-command.
@@ -1123,14 +1270,14 @@ void ForgeHwnd::AutoCompleteCmd(string &CurCmd)
     else {
         this->CompleteOpt(TempCmds[1],TempCmds.back());
     }
-    TempCmd=TempCmds[0];
-    for (i=1;i<(int)TempCmds.size();i++) TempCmd+=S+TempCmds[i];
+    TempCmd.clear();
+    for (i=0;i<(int)TempCmds.size();i++) TempCmd+=TempCmds[i]+S;
     CurCmd=TempCmd;
 
     return;
 }
 
-void ForgeHwnd::InputCmdTask(CmdExchangeData *Data)
+void ForgeHwnd::InputCmdTask(RunTimeCmdData *Data)
 {
     size_t p;
 
@@ -1156,11 +1303,12 @@ void ForgeHwnd::InputCmdTask(CmdExchangeData *Data)
     return;
 }
 
-void ForgeHwnd::DetecKeyTask(CmdExchangeData *Data)
+void ForgeHwnd::DetecKeyTask(RunTimeCmdData *Data)
 {
     int KeyVal;
 
     KeyVal=0;
+
     while (true) {
         if (!_kbhit()) {
 #ifdef _WIN32
@@ -1236,9 +1384,10 @@ void ForgeHwnd::DetecKeyTask(CmdExchangeData *Data)
                         Data->CursorPos--;
                     }
                     break;
-                case 0x81: // Delete
+                case 0x33: // Delete
                     if (Data->CursorPos<=(int)Data->CurInput.size()) {
                         Data->CurInput.erase(Data->CursorPos,1);
+                        while (_kbhit()) _getch();
                     }
                     break;
                 }
@@ -1314,15 +1463,19 @@ void ForgeHwnd::ForkReserved(int Index)
     // --exit    : exit this program.
     //
     // YOU CAN ADD YOUR OWN RESERVED COMMAND HERE.
+    vector<string> TempCmdOptsArgs;
+
+    TempCmdOptsArgs=this->GetCmdOptsArgs();
+
     switch (Index) {
     case 0: // -h/--help
-        this->APIhelp(s_CmdOptsArgs); break;
+        this->APIhelp(TempCmdOptsArgs); break;
     case 1: // -v/--version
-        this->APIversion(s_CmdOptsArgs); break;
+        this->APIversion(TempCmdOptsArgs); break;
     case 2: // -sys/--system
-        this->APIsystem(s_CmdOptsArgs); break;
+        this->APIsystem(TempCmdOptsArgs); break;
     case 3: // -ext/--exit
-        this->APIexit(s_CmdOptsArgs); break;
+        this->APIexit(TempCmdOptsArgs); break;
     default:
         break;
     }
@@ -1333,6 +1486,7 @@ void ForgeHwnd::ForkReserved(int Index)
 void ForgeHwnd::Init(void)
 {
     // Init
+    s_RunSign.clear();
     s_CLIMode=ONELINE_M;
     s_CurCmdPos=0;
 
@@ -1353,13 +1507,13 @@ void ForgeHwnd::Init(void)
     this->HookApi("-ext",nullptr);
     this->HookApi("-ext","--exit");
 
-    this->SetCmdBrief("-h","get help infomation");
-    this->SetCmdBrief("-v","get version message");
-    this->SetCmdBrief("-sys","system interface");
-    this->SetCmdBrief("-ext","quit the program");
+    this->HookBrief("-h","get help infomation");
+    this->HookBrief("-v","get version message");
+    this->HookBrief("-sys","system interface");
+    this->HookBrief("-ext","quit the program");
 
-    s_ResCmdNum=(int)s_CmdIndex.size();
-    s_ResApiNum=(int)s_ApiCanPool.size();
+    this->SetResCmdNum(this->CmdsCount());
+    this->SetResApiNum(this->ApiCanCount());
 }
 
 bool ForgeHwnd::BuildCheck(void)
@@ -1368,11 +1522,12 @@ bool ForgeHwnd::BuildCheck(void)
     int i,Apis;
 
     State=true;
-    Apis=(int)s_ApiCanPool.size();
-    if (!this->CheckHooks()) State=false;
+    Apis=this->ApiCanCount();
 
-    for (i=s_ResApiNum;i<Apis;i++) {
-        if (!s_ApiCanPool[i].BuildCheck()) State=false;
+    if (!this->BuildCheckHooks()) State=false;
+
+    for (i=this->GetResApiNum();i<Apis;i++) {
+        if (!this->ApiCanAt(i)->BuildCheck()) State=false;
     }
     return State;
 }
@@ -1415,12 +1570,13 @@ void ForgeHwnd::GenHelpInfo(void)
 {
     int i,Apis;
     
-    Apis=(int)s_ApiCanPool.size();
+    Apis=this->ApiCanCount();
+
     this->Cout(DS+"Usage : "+this->GetMainCmd()+" [-cmd] [-opt], ... [-arg], ...\n");
 
     this->Cout(DS+"Commands : ");
     for (i=0;i<Apis;i++) {
-        s_ApiCanPool[i].API({"-help"});
+        this->ApiCanAt(i)->API({"-help"});
     }
     return;
 }
@@ -1437,7 +1593,7 @@ void ForgeHwnd::GenVersionInfo(void)
 }
 ///    PUBLIC :
 /////////////////////////////////////////////////
-void ForgeHwnd::SetCLICfg(CLICfgData Cfg)
+void ForgeHwnd::SetCLICfg(CLIConfigData Cfg)
 {
     s_Cfg=Cfg;
 
@@ -1487,9 +1643,9 @@ void ForgeHwnd::SetCLIMainCmd(const string &MainCmd)
     return;
 }
 
-OptFmtData ForgeHwnd::GenOptFmt(const string &LongFmt,const string &ShortFmt,const string &Brief,const vector<ArgFmtData> &Args,int OptType)
+OptionData ForgeHwnd::GenOptFmt(const string &LongFmt,const string &ShortFmt,const string &Brief,const vector<ArgumentData> &Args,int OptType)
 {
-    OptFmtData TempOpt;
+    OptionData TempOpt;
 
     TempOpt.Brief=Brief;
     TempOpt.LongFmt=LongFmt;
@@ -1502,36 +1658,18 @@ OptFmtData ForgeHwnd::GenOptFmt(const string &LongFmt,const string &ShortFmt,con
 
 void ForgeHwnd::SetCmdBrief(const string &Cmd,const string &Brief)
 {
-    int Index;
-
-    if ((Index=this->CmdIndex(Cmd))==-1) {
-        this->StdMsg("You are setting brief to an unhooked [-cmd] '"+Cmd+"'", 4);
-        return;
-    }
-    Index=s_CmdApiTable[Index];
-    s_ApiCanPool[Index].SetBrief(Brief);
-
-    return;
+    this->HookBrief(Cmd,Brief);
 }
 
-void ForgeHwnd::SetCmdOpt(const string &Cmd,const OptFmtData &Opt)
+void ForgeHwnd::SetCmdOpt(const string &Cmd,const OptionData &Opt)
 {
-    int Index;
-
-    if ((Index=this->CmdIndex(Cmd))==-1) {
-        this->StdMsg("You are setting options to an unhooked [-cmd] '"+Cmd+"'",4);
-        return;
-    }
-    Index=s_CmdApiTable[Index];
-    s_ApiCanPool[Index].AppendOpt(Opt);
-
-    return;
+    this->HookOpt(Cmd,Opt);
 }
 
-void ForgeHwnd::SetCmdOpts(const string &Cmd,const vector<OptFmtData> &Opts)
+void ForgeHwnd::SetCmdOpts(const string &Cmd,const vector<OptionData> &Opts)
 {
-    for(const OptFmtData &Opt:Opts) {
-        this->SetCmdOpt(Cmd,Opt);
+    for(const OptionData &Opt:Opts) {
+        this->HookOpt(Cmd,Opt);
     }
     return;
 }
@@ -1550,7 +1688,7 @@ void ForgeHwnd::HookCmdApi(const string &Cmd,void (*API)(vector<vector<string>>)
     return;
 }
 
-void ForgeHwnd::HookCmdApi(const string &Cmd,const string &Brief,const vector<OptFmtData> &Opts,void(*API)(vector<vector<string>>))
+void ForgeHwnd::HookCmdApi(const string &Cmd,const string &Brief,const vector<OptionData> &Opts,void(*API)(vector<vector<string>>))
 {
     this->HookApi(Cmd,API);
     this->SetCmdBrief(Cmd,Brief);
@@ -1562,14 +1700,14 @@ void ForgeHwnd::HookCmdApi(const string &Cmd,const string &Brief,const vector<Op
 int ForgeHwnd::MainLoop(const string &RunSign)
 {
     bool isInteract;
-    CmdExchangeData Data;
+    RunTimeCmdData Data;
 
     isInteract=(s_CLIMode==INTRACT_M);
 
     s_RunSign=RunSign;
     Data.ExitFlag=false;
     Data.CurInput.clear();
-    Data.CurInput=isInteract?"":s_MainCmd+s_HistoryCmd[0];
+    Data.CurInput=isInteract?"":this->GetMainCmd()+s_HistoryCmd[0];
     Data.CursorPos=isInteract?0:(int)Data.CurInput.length();
 
     if (!this->BuildCheck()) {
